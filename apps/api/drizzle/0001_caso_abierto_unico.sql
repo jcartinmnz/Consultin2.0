@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "casos_conv_abierto_uq" ON "casos" USING btree ("conversacion_id") WHERE "casos"."estado" <> 'resuelto';

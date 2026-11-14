@@ -21,5 +21,5 @@ LAB_NAME = "Laboratorio Óptico Topex"
 #   DATABASE_URL        → Neon
 #   ANTHROPIC_API_KEY
 #   ZERNIO_API_KEY
-#   ZERNIO_WEBHOOK_SECRET
-#   ADMIN_API_KEY       → protege CRM y dashboard
+#   ZERNIO_WEBHOOK_SECRET → obligatorio con CHANNEL = "zernio"
+#   ADMIN_API_KEY       → protege CRM, dashboard y /dev/chat

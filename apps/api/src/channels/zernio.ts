@@ -1,4 +1,5 @@
 import type { ChannelAdapter, InboundMessage } from "./types";
+import { hmacHex, igualesSeguro } from "../lib/seguridad";
 
 /**
  * Adaptador de Zernio (WhatsApp Cloud API de Meta).
@@ -18,14 +19,15 @@ const INBOUND_EVENTS = new Set(["message.received", "inbox.message.received"]); 
 
 export class ZernioChannel implements ChannelAdapter {
   readonly nombre = "zernio";
-  constructor(private apiKey: string, private webhookSecret?: string) {}
+  constructor(private apiKey: string, private webhookSecret: string) {
+    // La identidad de la óptica sale del teléfono del payload: sin firma, cualquiera podría suplantarla.
+    if (!webhookSecret) throw new Error("ZernioChannel requiere ZERNIO_WEBHOOK_SECRET");
+  }
 
   async parseWebhook(req: Request): Promise<InboundMessage[]> {
     const raw = await req.text();
-    if (this.webhookSecret) {
-      const ok = await verificarHmac(raw, req.headers.get(SIGNATURE_HEADER), this.webhookSecret);
-      if (!ok) throw new Error("Firma de webhook inválida");
-    }
+    const ok = await verificarHmac(raw, req.headers.get(SIGNATURE_HEADER), this.webhookSecret);
+    if (!ok) throw new Error("Firma de webhook inválida");
 
     const body = JSON.parse(raw) as Record<string, any>;
     if (!INBOUND_EVENTS.has(body.event ?? body.type)) return [];
@@ -56,18 +58,8 @@ export class ZernioChannel implements ChannelAdapter {
   }
 }
 
-async function verificarHmac(body: string, firma: string | null, secret: string) {
+export async function verificarHmac(body: string, firma: string | null, secret: string) {
   if (!firma) return false;
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
-  const hex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return timingSafeEqual(hex, firma.replace(/^sha256=/, ""));
-}
-
-function timingSafeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let r = 0;
-  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return r === 0;
+  const esperado = await hmacHex(secret, body);
+  return igualesSeguro(esperado, firma.trim().replace(/^sha256=/, "").toLowerCase());
 }

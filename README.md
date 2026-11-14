@@ -21,6 +21,7 @@ pnpm --filter api dev
 En otra terminal:
 ```bash
 curl -X POST localhost:8787/dev/chat -H 'content-type: application/json' \
+  -H "authorization: Bearer $ADMIN_API_KEY" \
   -d '{"telefono":"50688880001","texto":"cómo va la orden 48213?"}'
 
 cp apps/web/.env.example apps/web/.env && pnpm --filter web dev   # clave = ADMIN_API_KEY
@@ -48,7 +49,7 @@ Cambiar `PRICES_SOURCE = "neon"` en `apps/api/wrangler.toml`.
 1. Conectar el número de Topex en Zernio (Embedded Signup, modo Cloud API).
 2. Revisar los 3 `TODO` de `src/channels/zernio.ts` contra la documentación de Zernio.
 3. Configurar el webhook de Zernio a `https://<worker>/webhooks/zernio`.
-4. `wrangler secret put ZERNIO_API_KEY` y `ZERNIO_WEBHOOK_SECRET`, luego `CHANNEL = "zernio"`.
+4. `wrangler secret put ZERNIO_API_KEY` y `ZERNIO_WEBHOOK_SECRET` (obligatorio: sin él el worker no arranca en modo zernio), luego `CHANNEL = "zernio"`.
 
 ## Deploy
 ```bash
@@ -67,7 +68,7 @@ VITE_API_URL=https://consultin-api.<cuenta>.workers.dev pnpm deploy
 | Método | Ruta | Auth | Uso |
 |---|---|---|---|
 | POST | `/webhooks/zernio` | firma Zernio | Mensajes entrantes de WhatsApp |
-| POST | `/dev/chat` | — (solo `CHANNEL=dev`) | Probar el agente con curl |
+| POST | `/dev/chat` | `ADMIN_API_KEY` (solo `CHANNEL=dev`) | Probar el agente con curl |
 | GET | `/crm/casos?estado=` | `ADMIN_API_KEY` | Bandeja de casos |
 | GET/PATCH | `/crm/casos/:id` | `ADMIN_API_KEY` | Detalle y cambio de estado |
 | POST | `/crm/casos/:id/responder` | `ADMIN_API_KEY` | Responder por WhatsApp desde el CRM |

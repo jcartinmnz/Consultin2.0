@@ -8,6 +8,13 @@
       "when": 1794682992472,
       "tag": "0000_nostalgic_nextwave",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794684172583,
+      "tag": "0001_caso_abierto_unico",
+      "breakpoints": true
     }
   ]
 }

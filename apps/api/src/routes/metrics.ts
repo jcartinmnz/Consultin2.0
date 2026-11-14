@@ -5,13 +5,19 @@ import { getDb } from "../db/client";
 
 export const metrics = new Hono<AppBindings>();
 
+/** Entero entre 1 y 365; cualquier valor inválido cae en 30. */
+export function parseDias(v: string | undefined): number {
+  const n = Math.trunc(Number(v ?? 30));
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 365) : 30;
+}
+
 /**
  * GET /metrics/resumen?dias=30
  * Todo sale de las tablas conversaciones / casos / eventos.
  */
 metrics.get("/resumen", async (c) => {
   const db = getDb(c.env.DATABASE_URL);
-  const dias = Math.min(Number(c.req.query("dias") ?? 30), 365);
+  const dias = parseDias(c.req.query("dias"));
   const desde = sql`now() - (${dias} || ' days')::interval`;
 
   const [totales] = (await db.execute(sql`

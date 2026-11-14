@@ -22,6 +22,9 @@ app.get("/", (c) => c.json({
 }));
 
 app.route("/webhooks", webhooks);
+
+// /dev/chat acepta cualquier teléfono: sin clave permitiría suplantar ópticas si se despliega con CHANNEL=dev.
+app.use("/dev/*", requireKey((e) => e.ADMIN_API_KEY));
 app.route("/dev", dev);
 
 app.use("/crm/*", requireKey((e) => e.ADMIN_API_KEY));

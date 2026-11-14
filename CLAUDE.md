@@ -37,7 +37,8 @@ Para conectar un dato real: implementar la interfaz, registrarla en `sources/ind
 - Una óptica **solo** ve sus órdenes: `estado_orden` compara `codigoCliente` contra la óptica identificada por teléfono. La identidad nunca viene del modelo ni del texto del usuario.
 - Nunca exponer recetas, nombres de pacientes ni datos clínicos (Ley 8968). La vista de LensWare no debe incluirlos.
 - Acceso a LensWare **solo lectura** (usuario MySQL con `SELECT` sobre una vista).
-- Cualquier escalamiento crea un caso en `casos` y pone la conversación en `humano`. Al resolver el caso vuelve a `bot`.
+- Todo endpoint que acepte un teléfono como identidad debe estar autenticado: el webhook de Zernio exige firma HMAC (`ZERNIO_WEBHOOK_SECRET` obligatorio) y `/dev/*`, `/crm/*`, `/metrics/*` y `/tools/*` exigen clave. Comparar secretos solo con `lib/seguridad.ts`.
+- Cualquier escalamiento crea un caso en `casos` y pone la conversación en `humano`. Al resolver el caso vuelve a `bot`. Máximo un caso abierto por conversación (índice único parcial `casos_conv_abierto_uq`).
 
 ## Comandos
 ```bash
@@ -54,6 +55,7 @@ pnpm --filter api db:seed      # 2 ópticas demo + precios mock
 Probar el agente sin WhatsApp (`CHANNEL=dev`):
 ```bash
 curl -X POST localhost:8787/dev/chat -H 'content-type: application/json' \
+  -H "authorization: Bearer $ADMIN_API_KEY" \
   -d '{"telefono":"50688880001","texto":"cuánto sale un progresivo 1.67 con AR?"}'
 ```
 Teléfonos demo: `50688880001` (OPT001, órdenes 48213/48214/48190) y `50688880002` (OPT002, 48220 en HOLD y 48105 atrasada).

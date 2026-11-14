@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { casos, contactos, conversaciones, eventos, mensajes, opticas } from "../db/schema";
 import type { Turno } from "../agent/run";
@@ -57,9 +57,12 @@ export async function casoAbierto(db: Db, conversacionId: string) {
 export async function crearCaso(db: Db, p: {
   conversacionId: string; opticaId: string | null; nivel: "N2" | "N3"; motivo: string; resumen: string;
 }) {
-  const existente = await casoAbierto(db, p.conversacionId);
-  if (existente) return existente;
-  const [row] = await db.insert(casos).values(p).returning();
+  // El índice único parcial casos_conv_abierto_uq garantiza un solo caso abierto por conversación,
+  // incluso si dos mensajes llegan a la vez: el segundo insert no hace nada y devuelve el existente.
+  const [row] = await db.insert(casos).values(p)
+    .onConflictDoNothing({ target: casos.conversacionId, where: sql`${casos.estado} <> 'resuelto'` })
+    .returning();
+  if (!row) return (await casoAbierto(db, p.conversacionId))!;
   await setEstadoConversacion(db, p.conversacionId, "humano");
   await registrarEvento(db, { conversacionId: p.conversacionId, tipo: "escalamiento", metadata: { nivel: p.nivel, motivo: p.motivo } });
   return row!;

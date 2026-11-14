@@ -4,7 +4,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import type { AppBindings } from "../env";
 import { getDb } from "../db/client";
 import { casos, contactos, conversaciones, mensajes, notasCaso, opticas } from "../db/schema";
-import { getChannel } from "../channels";
+import { canalDeConversacion } from "../channels";
 import * as repo from "../services/repo";
 
 export const crm = new Hono<AppBindings>();
@@ -67,8 +67,11 @@ crm.post("/casos/:id/responder", async (c) => {
   const [caso] = await db.select().from(casos).where(eq(casos.id, c.req.param("id")));
   if (!caso) return c.json({ error: "No existe" }, 404);
   const [conv] = await db.select().from(conversaciones).where(eq(conversaciones.id, caso.conversacionId));
-  await getChannel(c.env).enviar(conv!.externalId, texto);
-  await repo.guardarMensaje(db, { conversacionId: conv!.id, rol: "agente", contenido: texto, autor });
+  if (!conv) return c.json({ error: "No existe la conversación" }, 404);
+  const canal = canalDeConversacion(c.env, conv.canal);
+  if (!canal) return c.json({ error: `No se puede responder por el canal "${conv.canal}" desde el CRM` }, 409);
+  await canal.enviar(conv.externalId, texto);
+  await repo.guardarMensaje(db, { conversacionId: conv.id, rol: "agente", contenido: texto, autor });
   if (caso.estado === "nuevo") await db.update(casos).set({ estado: "en_atencion", asignadoA: caso.asignadoA ?? autor }).where(eq(casos.id, caso.id));
   return c.json({ ok: true });
 });

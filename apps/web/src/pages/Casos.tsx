@@ -44,6 +44,7 @@ function DetalleCaso({ id, onCambio }: { id: string; onCambio: () => void }) {
   const { data, recargar } = useApi<Detalle>(`/crm/casos/${id}`);
   const [texto, setTexto] = useState("");
   const [modo, setModo] = useState<"responder" | "nota">("responder");
+  const [error, setError] = useState<string | null>(null);
   const autor = localStorage.getItem("consultin_autor") ?? "Servicio al cliente";
 
   if (!data) return <p>Cargando…</p>;
@@ -56,7 +57,15 @@ function DetalleCaso({ id, onCambio }: { id: string; onCambio: () => void }) {
   const enviar = async () => {
     if (!texto.trim()) return;
     const path = modo === "responder" ? `/crm/casos/${id}/responder` : `/crm/casos/${id}/notas`;
-    await api(path, { method: "POST", body: JSON.stringify({ autor, texto }) });
+    setError(null);
+    try {
+      await api(path, { method: "POST", body: JSON.stringify({ autor, texto }) });
+    } catch (e) {
+      // El texto se conserva para poder reintentar
+      const m = String((e as Error).message);
+      try { setError(JSON.parse(m.slice(m.indexOf(":") + 1)).error); } catch { setError(m); }
+      return;
+    }
     setTexto(""); await recargar(); onCambio();
   };
 
@@ -88,6 +97,7 @@ function DetalleCaso({ id, onCambio }: { id: string; onCambio: () => void }) {
           <button className={modo === "nota" ? "on" : ""} onClick={() => setModo("nota")}>Nota interna</button>
         </div>
         <textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder={modo === "responder" ? "Mensaje para la óptica…" : "Solo visible para el equipo…"} />
+        {error && <p className="error">{error}</p>}
         <button className="primario" onClick={enviar}>{modo === "responder" ? "Enviar" : "Guardar nota"}</button>
       </div>
     </>

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable, pgEnum, uuid, text, boolean, numeric, integer, timestamp, jsonb, index, uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -84,7 +85,11 @@ export const casos = pgTable("casos", {
   asignadoA: text("asignado_a"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   resueltoAt: timestamp("resuelto_at", { withTimezone: true }),
-}, (t) => [index("casos_estado_idx").on(t.estado)]);
+}, (t) => [
+  index("casos_estado_idx").on(t.estado),
+  /** Un solo caso abierto por conversación: evita duplicados si llegan dos mensajes a la vez */
+  uniqueIndex("casos_conv_abierto_uq").on(t.conversacionId).where(sql`${t.estado} <> 'resuelto'`),
+]);
 
 export const notasCaso = pgTable("notas_caso", {
   id: uuid("id").primaryKey().defaultRandom(),

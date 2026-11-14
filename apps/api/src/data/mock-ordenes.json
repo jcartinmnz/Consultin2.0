@@ -1,0 +1,7 @@
+[
+  { "numeroOrden": "48213", "codigoCliente": "OPT001", "estadoCodigo": "SURF", "estacion": "Tallado freeform", "fechaIngreso": "2026-11-12T09:15:00-06:00", "fechaEstimada": "2026-11-17T16:00:00-06:00", "referencia": "REF-1182" },
+  { "numeroOrden": "48214", "codigoCliente": "OPT001", "estadoCodigo": "COAT", "estacion": "Antirreflejo", "fechaIngreso": "2026-11-11T14:02:00-06:00", "fechaEstimada": "2026-11-16T16:00:00-06:00", "referencia": "REF-1183" },
+  { "numeroOrden": "48190", "codigoCliente": "OPT001", "estadoCodigo": "SHIP", "estacion": "Despacho", "fechaIngreso": "2026-11-08T10:30:00-06:00", "fechaEstimada": "2026-11-14T12:00:00-06:00", "referencia": "REF-1170" },
+  { "numeroOrden": "48220", "codigoCliente": "OPT002", "estadoCodigo": "HOLD", "estacion": "Revisión de receta", "fechaIngreso": "2026-11-13T08:45:00-06:00", "fechaEstimada": null, "referencia": "CV-559" },
+  { "numeroOrden": "48105", "codigoCliente": "OPT002", "estadoCodigo": "EDGE", "estacion": "Biselado y montaje", "fechaIngreso": "2026-11-02T11:00:00-06:00", "fechaEstimada": "2026-11-06T16:00:00-06:00", "referencia": "CV-540" }
+]

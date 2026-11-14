@@ -1,0 +1,25 @@
+name = "consultin-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# mock = datos de prueba en src/data | live = fuentes reales
+PRICES_SOURCE = "mock"   # mock | neon
+ORDERS_SOURCE = "mock"   # mock | lensware
+CHANNEL = "dev"          # dev | zernio
+ANTHROPIC_MODEL = "claude-sonnet-5-5"
+LAB_NAME = "Laboratorio Óptico Topex"
+
+# Conexión a LensWare (MySQL on-prem) vía Cloudflare Tunnel + Hyperdrive.
+# Descomentar cuando el lab entregue accesos (ver README → "Conectar LensWare").
+# [[hyperdrive]]
+# binding = "LENSWARE_DB"
+# id = "<hyperdrive-config-id>"
+
+# Secrets (wrangler secret put <NAME>):
+#   DATABASE_URL        → Neon
+#   ANTHROPIC_API_KEY
+#   ZERNIO_API_KEY
+#   ZERNIO_WEBHOOK_SECRET
+#   ADMIN_API_KEY       → protege CRM y dashboard

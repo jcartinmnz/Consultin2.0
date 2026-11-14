@@ -1,0 +1,6 @@
+# Copiar a .dev.vars para desarrollo local (wrangler dev lo lee automáticamente)
+DATABASE_URL="postgresql://user:pass@ep-xxxx.us-east-2.aws.neon.tech/consultin?sslmode=require"
+ANTHROPIC_API_KEY="sk-ant-..."
+ZERNIO_API_KEY="sk_..."
+ZERNIO_WEBHOOK_SECRET="..."
+ADMIN_API_KEY="cambiar-esto"

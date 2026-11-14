@@ -1,0 +1,30 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx scripts/seed.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "@neondatabase/serverless": "^1.2.1",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.18",
+    "mysql2": "^3.24.6",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261114.1",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.162.0"
+  }
+}

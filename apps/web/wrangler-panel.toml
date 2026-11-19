@@ -1,0 +1,5 @@
+# Publica el panel como Worker con los archivos embebidos (ver scripts/empaquetar-worker.mjs).
+# Alternativa a `pnpm deploy` (Cloudflare Pages).
+name = "consultin-web"
+main = ".wrangler/panel/worker.js"
+compatibility_date = "2026-11-01"

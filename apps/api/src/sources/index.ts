@@ -15,7 +15,7 @@ export function getSources(env: Env, db: Db): { prices: PriceSource; orders: Ord
     if (!env.LENSWARE_DB) throw new Error("ORDERS_SOURCE=lensware pero falta el binding LENSWARE_DB (Hyperdrive)");
     orders = new LensWareOrderSource(env.LENSWARE_DB);
   } else {
-    orders = new MockOrderSource();
+    orders = new MockOrderSource(new Date()); // fechas demo relativas a hoy
   }
   return { prices, orders };
 }

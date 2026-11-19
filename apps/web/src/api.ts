@@ -8,7 +8,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...init,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${getKey()}`, ...init.headers },
   });
-  if (res.status === 401) throw new Error("401");
+  if (res.status === 401) {
+    // Clave vencida o incorrecta: volver al login
+    setKey("");
+    location.reload();
+    throw new Error("401");
+  }
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   return res.json() as Promise<T>;
 }

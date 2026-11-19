@@ -51,6 +51,14 @@ Cambiar `PRICES_SOURCE = "neon"` en `apps/api/wrangler.toml`.
 3. Configurar el webhook de Zernio a `https://<worker>/webhooks/zernio`.
 4. `wrangler secret put ZERNIO_API_KEY` y `ZERNIO_WEBHOOK_SECRET` (obligatorio: sin él el worker no arranca en modo zernio), luego `CHANNEL = "zernio"`.
 
+## Demo en vivo
+
+- Panel (web y celular): https://consultin-web.expertia-cr.workers.dev — entrar con `ADMIN_API_KEY`.
+  Atajo para celular: `https://consultin-web.expertia-cr.workers.dev/#clave=<ADMIN_API_KEY>` (el `#` no se envía al servidor; la clave se guarda y se borra de la URL).
+- **Simulador**: escribir como una óptica demo y ver a Consultin responder con Claude. "Nueva conversación" reinicia la demo.
+  Si se pide una persona, el caso aparece en **Casos**; lo que se responda ahí llega al simulador.
+- Las órdenes mock se desplazan a la fecha de hoy (48213 en tiempo, 48105 atrasada, 48220 en HOLD), así la demo se ve igual cualquier día.
+
 ## Deploy
 ```bash
 cd apps/api
@@ -60,7 +68,9 @@ wrangler secret put ADMIN_API_KEY
 pnpm deploy
 
 cd ../web
-VITE_API_URL=https://consultin-api.<cuenta>.workers.dev pnpm deploy
+VITE_API_URL=https://consultin-api.<cuenta>.workers.dev pnpm deploy          # Cloudflare Pages
+# o, si la subida de Pages no está disponible, como Worker con los archivos embebidos:
+VITE_API_URL=https://consultin-api.<cuenta>.workers.dev pnpm deploy:worker   # → consultin-web.<cuenta>.workers.dev
 ```
 
 ## Endpoints
@@ -68,7 +78,8 @@ VITE_API_URL=https://consultin-api.<cuenta>.workers.dev pnpm deploy
 | Método | Ruta | Auth | Uso |
 |---|---|---|---|
 | POST | `/webhooks/zernio` | firma Zernio | Mensajes entrantes de WhatsApp |
-| POST | `/dev/chat` | `ADMIN_API_KEY` (solo `CHANNEL=dev`) | Probar el agente con curl |
+| POST | `/dev/chat` | `ADMIN_API_KEY` (solo `CHANNEL=dev`) | Probar el agente (curl o simulador del panel) |
+| GET | `/dev/conversacion?telefono=&sesion=` · `/dev/contactos` | `ADMIN_API_KEY` (solo `CHANNEL=dev`) | Simulador del panel |
 | GET | `/crm/casos?estado=` | `ADMIN_API_KEY` | Bandeja de casos |
 | GET/PATCH | `/crm/casos/:id` | `ADMIN_API_KEY` | Detalle y cambio de estado |
 | POST | `/crm/casos/:id/responder` | `ADMIN_API_KEY` | Responder por WhatsApp desde el CRM |

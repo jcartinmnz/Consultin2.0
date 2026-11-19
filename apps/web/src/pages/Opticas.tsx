@@ -17,7 +17,7 @@ export function Opticas() {
   };
 
   return (
-    <div className="casos">
+    <div className={`casos ${sel ? "con-detalle" : ""}`}>
       <div className="lista">
         <header className="top"><h2>Ópticas</h2></header>
         <form className="mini" onSubmit={crear}>
@@ -31,7 +31,10 @@ export function Opticas() {
           </button>
         ))}
       </div>
-      <div className="detalle">{sel ? <Ficha id={sel} /> : <p className="vacio">Seleccione una óptica.</p>}</div>
+      <div className="detalle">
+        {sel && <button className="volver" onClick={() => setSel(null)}>← Ópticas</button>}
+        {sel ? <Ficha id={sel} /> : <p className="vacio">Seleccione una óptica.</p>}
+      </div>
     </div>
   );
 }

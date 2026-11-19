@@ -9,10 +9,10 @@ export class DevChannel implements ChannelAdapter {
   readonly salida: string[] = [];
 
   async parseWebhook(req: Request): Promise<InboundMessage[]> {
-    const b = (await req.json()) as { telefono: string; texto: string; nombre?: string };
+    const b = (await req.json()) as { telefono: string; texto: string; nombre?: string; sesion?: string };
     return [{
       canal: "dev",
-      conversacionExtId: `dev-${b.telefono}`,
+      conversacionExtId: devConversacionId(b.telefono, b.sesion),
       telefono: b.telefono.replace(/\D/g, ""),
       nombrePerfil: b.nombre ?? null,
       texto: b.texto,
@@ -23,4 +23,11 @@ export class DevChannel implements ChannelAdapter {
   async enviar(_conv: string, texto: string) {
     this.salida.push(texto);
   }
+}
+
+/** Cada sesión del simulador es una conversación nueva; sin sesión se usa una por teléfono. */
+export function devConversacionId(telefono: string, sesion?: string | null): string {
+  const tel = String(telefono).replace(/\D/g, "");
+  const ses = sesion && /^[a-z0-9-]{1,40}$/i.test(sesion) ? `-${sesion}` : "";
+  return `dev-${tel}${ses}`;
 }

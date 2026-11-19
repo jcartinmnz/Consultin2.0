@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, type Caso, type EstadoCaso, type Mensaje, type Nota } from "../api";
 import { useApi } from "../useApi";
+import { Formato } from "../Formato";
 
 interface FilaCaso { caso: Caso; optica: string | null; telefono: string }
 interface Detalle { caso: Caso; mensajes: Mensaje[]; notas: Nota[] }
@@ -14,7 +15,7 @@ export function Casos() {
   const lista = useApi<FilaCaso[]>(`/crm/casos${filtro ? `?estado=${filtro}` : ""}`);
 
   return (
-    <div className="casos">
+    <div className={`casos ${sel ? "con-detalle" : ""}`}>
       <div className="lista">
         <header className="top">
           <h2>Casos</h2>
@@ -34,6 +35,7 @@ export function Casos() {
         {lista.data?.length === 0 && <p className="vacio">No hay casos en este estado.</p>}
       </div>
       <div className="detalle">
+        {sel && <button className="volver" onClick={() => setSel(null)}>← Casos</button>}
         {sel ? <DetalleCaso id={sel} onCambio={lista.recargar} /> : <p className="vacio">Seleccione un caso.</p>}
       </div>
     </div>
@@ -77,13 +79,13 @@ function DetalleCaso({ id, onCambio }: { id: string; onCambio: () => void }) {
           {ESTADOS.map((e) => <option key={e} value={e}>{LABEL[e]}</option>)}
         </select>
       </header>
-      <div className="resumen"><strong>Resumen de Consultin</strong><p>{caso.resumen}</p></div>
+      <div className="resumen"><strong>Resumen de Consultin</strong><p><Formato texto={caso.resumen} /></p></div>
 
       <div className="chat">
         {data.mensajes.map((m) => (
           <div key={m.id} className={`msg ${m.rol}`}>
             <small>{m.rol === "agente" ? m.autor : m.rol === "bot" ? "Consultin" : "Óptica"} · {new Date(m.createdAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" })}</small>
-            <p>{m.contenido}</p>
+            <p><Formato texto={m.contenido} /></p>
           </div>
         ))}
         {data.notas.map((n) => (

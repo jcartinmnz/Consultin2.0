@@ -74,6 +74,7 @@ https://consultin-web.expertia-cr.workers.dev — entrar con `ADMIN_API_KEY`
   solo responde el equipo desde el panel. Escalar o abrir un caso también apaga el agente; resolver el caso lo enciende.
 - **Casos**: lo que el agente pasó a una persona.
 - **Ajustes**:
+  - *Mensajes seguidos*: segundos que el agente espera para juntar varios mensajes y responder una sola vez (0 = responde cada uno).
   - *Prompt base*: instrucciones del agente, editables. Las reglas de seguridad, la fecha, el canal y quién escribe
     las agrega siempre el código (`agent/prompt.ts` → `REGLAS_FIJAS`) y no se pueden borrar desde el panel.
   - *Conexiones*: cuentas de Zernio que atiende Consultin. Cada una tiene modo y, opcionalmente, prompt propio:

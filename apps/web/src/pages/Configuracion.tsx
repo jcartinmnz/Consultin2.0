@@ -19,9 +19,37 @@ export function Configuracion() {
   return (
     <>
       <header className="top"><h2>Ajustes</h2></header>
+      <Espera />
       <PromptBase />
       <Conexiones />
     </>
+  );
+}
+
+function Espera() {
+  const { data, recargar } = useApi<{ segundos: number; max: number; porDefecto: number }>("/crm/config/espera");
+  const [valor, setValor] = useState<number | null>(null);
+  const [estado, setEstado] = useState<string | null>(null);
+  useEffect(() => { if (data) setValor(data.segundos); }, [data]);
+  if (!data || valor === null) return <section className="panel"><p>Cargando…</p></section>;
+
+  const guardar = async () => {
+    setEstado(null);
+    try { await api("/crm/config/espera", { method: "PUT", body: JSON.stringify({ segundos: valor }) }); await recargar(); setEstado("Guardado."); }
+    catch (e) { setEstado(mensajeError(e)); }
+  };
+
+  return (
+    <section className="panel">
+      <h3>Mensajes seguidos</h3>
+      <p className="vacio">Cuando alguien manda varios mensajes seguidos, el agente espera este tiempo y responde una sola vez a todos. 0 = responde cada mensaje apenas llega.</p>
+      <div className="acciones espera">
+        <input type="range" min={0} max={data.max} step={1} value={valor} onChange={(e) => setValor(Number(e.target.value))} aria-label="Segundos de espera" />
+        <strong>{valor} s</strong>
+        <button className="primario" onClick={guardar} disabled={valor === data.segundos}>Guardar</button>
+      </div>
+      {estado && <p className="vacio">{estado}</p>}
+    </section>
   );
 }
 

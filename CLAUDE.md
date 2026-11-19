@@ -31,7 +31,8 @@ Para conectar un dato real: implementar la interfaz, registrarla en `sources/ind
    - Modo `abierto` sin identidad: el agente atiende solo con `escalar_a_humano` (`toolsPara(false)`); `buscar_precio` y `estado_orden` rechazan sin óptica.
 2. Upsert conversación + guardar mensaje (idempotente por `externalId`).
 3. Si la conversación está en estado `humano` → el bot NO responde.
-4. Regla determinista "pide hablar con una persona" → caso N2, sin LLM.
+   - Ráfaga: espera `espera_segundos` (panel → Ajustes, default 6, máx. 15). Si durante la espera llegó otro mensaje del cliente, este termina y responde el último, una sola vez, con el historial completo. Si apagaron el agente durante la espera, no responde.
+4. Regla determinista "pide hablar con una persona" (en cualquier mensaje de la ráfaga) → caso N2, sin LLM.
 5. Agente (`agent/run.ts`): loop de tool calling, máx. 6 iteraciones. Prompt = instrucciones editables (prompt de la conexión, o `configuracion.prompt_base`, o `PROMPT_BASE_DEFAULT`) + contexto + `REGLAS_FIJAS`.
 6. Enviar por el canal y, solo si salió, guardar la respuesta y registrar eventos. Si el envío falla: caso con el texto que no salió.
 

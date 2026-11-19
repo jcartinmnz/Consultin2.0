@@ -7,6 +7,8 @@ import { casos, configuracion, conexiones, contactos, conversaciones, mensajes, 
 import { canalDeConversacion } from "../channels";
 import * as repo from "../services/repo";
 import { PROMPT_BASE_DEFAULT, REGLAS_FIJAS } from "../agent/prompt";
+import { ESPERA_DEFAULT_S, ESPERA_MAX_S } from "../services/procesar";
+import { leerEsperaMs } from "./webhooks";
 import { listarCuentas, urlConectar, type CuentaZernio } from "../lib/zernio-api";
 
 export const crm = new Hono<AppBindings>();
@@ -191,6 +193,20 @@ crm.delete("/config/prompt", async (c) => {
   const db = getDb(c.env.DATABASE_URL);
   await db.delete(configuracion).where(eq(configuracion.clave, "prompt_base"));
   return c.json({ ok: true });
+});
+
+/* ───────────── Configuración: espera para juntar mensajes seguidos ───────────── */
+
+crm.get("/config/espera", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  return c.json({ segundos: (await leerEsperaMs(db)) / 1000, max: ESPERA_MAX_S, porDefecto: ESPERA_DEFAULT_S });
+});
+
+crm.put("/config/espera", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const { segundos } = z.object({ segundos: z.number().min(0).max(ESPERA_MAX_S) }).parse(await c.req.json());
+  await repo.guardarConfig(db, "espera_segundos", String(segundos));
+  return c.json({ ok: true, segundos });
 });
 
 /* ───────────── Configuración: conexiones (cuentas de Zernio) ───────────── */

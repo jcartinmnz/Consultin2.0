@@ -1,15 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 
 // Repo en memoria: solo lo que procesarMensaje usa
-const estado = { mensajes: [] as any[], casos: [] as any[], eventos: [] as any[] };
+const estado = { mensajes: [] as any[], casos: [] as any[], eventos: [] as any[], convEstado: "bot" as string };
 vi.mock("../src/services/repo", () => ({
   identificar: vi.fn(async () => null),
   upsertConversacion: vi.fn(async () => ({ id: "conv1", estado: "bot" })),
-  guardarMensaje: vi.fn(async (_db: unknown, m: any) => { estado.mensajes.push(m); return true; }),
+  guardarMensaje: vi.fn(async (_db: unknown, m: any) => { const id = `id${estado.mensajes.length}`; estado.mensajes.push({ ...m, id }); return id; }),
   registrarEvento: vi.fn(async (_db: unknown, e: any) => { estado.eventos.push(e); }),
   historial: vi.fn(async () => [{ rol: "cliente", contenido: "hola, ¿cuánto cuesta un chatbot?" }]),
   crearCaso: vi.fn(async (_db: unknown, c: any) => { estado.casos.push(c); return c; }),
   leerConfig: vi.fn(async () => null),
+  ultimoMensajeCliente: vi.fn(async () => estado.mensajes.filter((m) => m.rol === "cliente").at(-1)?.id ?? null),
+  textoPendiente: vi.fn(async () => {
+    const p: string[] = [];
+    for (const m of [...estado.mensajes].reverse()) { if (m.rol !== "cliente") break; p.unshift(m.contenido); }
+    return p.join("\n");
+  }),
+  estadoConversacion: vi.fn(async () => estado.convEstado),
 }));
 
 const { procesarMensaje } = await import("../src/services/procesar");
@@ -53,5 +60,49 @@ describe("procesarMensaje en modo abierto (Instagram)", () => {
     expect(estado.mensajes.filter((m) => m.rol === "bot")).toHaveLength(0);
     expect(estado.casos[0].resumen).toContain("No se pudo enviar");
     expect(estado.casos[0].resumen).toContain("¿Me indica su nombre?");
+  });
+});
+
+describe("ráfaga de mensajes seguidos", () => {
+  const msj = (texto: string, i: number) => ({ ...dm, texto, mensajeExtId: `r${i}` });
+
+  it("tres mensajes seguidos → una sola respuesta que ve los tres", async () => {
+    estado.mensajes = []; estado.casos = []; estado.convEstado = "bot";
+    const create = vi.fn(async () => ({ stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 }, content: [{ type: "text", text: "Con gusto, le cuento." }] }));
+    const enviar = vi.fn(async () => {});
+    const d = { ...deps(enviar, create), esperaMs: 40 };
+    // llegan con 10 ms de diferencia, como un webhook por mensaje
+    const p1 = procesarMensaje(d as any, msj("hola", 1), { modo: "abierto", prompt: null });
+    await new Promise((r) => setTimeout(r, 10));
+    const p2 = procesarMensaje(d as any, msj("quiero info", 2), { modo: "abierto", prompt: null });
+    await new Promise((r) => setTimeout(r, 10));
+    const p3 = procesarMensaje(d as any, msj("¿cuánto cuesta?", 3), { modo: "abierto", prompt: null });
+    await Promise.all([p1, p2, p3]);
+    expect(create).toHaveBeenCalledOnce();
+    expect(enviar).toHaveBeenCalledOnce();
+  });
+
+  it("si apagan el agente durante la espera, no responde", async () => {
+    estado.mensajes = []; estado.convEstado = "bot";
+    const create = vi.fn();
+    const enviar = vi.fn(async () => {});
+    const p = procesarMensaje({ ...deps(enviar, create), esperaMs: 30 } as any, msj("hola", 9), { modo: "abierto", prompt: null });
+    estado.convEstado = "humano";
+    await p;
+    expect(create).not.toHaveBeenCalled();
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it("detecta 'quiero hablar con una persona' aunque venga en medio de la ráfaga", async () => {
+    estado.mensajes = []; estado.casos = []; estado.convEstado = "bot";
+    const create = vi.fn();
+    const d = { ...deps(vi.fn(async () => {}), create), esperaMs: 30 };
+    const a = procesarMensaje(d as any, msj("quiero hablar con una persona", 11), { modo: "abierto", prompt: null });
+    await new Promise((r) => setTimeout(r, 5));
+    const b = procesarMensaje(d as any, msj("es urgente", 12), { modo: "abierto", prompt: null });
+    await Promise.all([a, b]);
+    expect(create).not.toHaveBeenCalled();
+    expect(estado.casos).toHaveLength(1);
+    expect(estado.casos[0].motivo).toBe("pide_humano");
   });
 });

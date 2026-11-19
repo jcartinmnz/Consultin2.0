@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { AppBindings } from "../env";
 import { buildDeps } from "../deps";
-import { procesarMensaje } from "../services/procesar";
+import { ESPERA_DEFAULT_S, ESPERA_MAX_S, procesarMensaje } from "../services/procesar";
 import * as repo from "../services/repo";
 
 export const webhooks = new Hono<AppBindings>();
@@ -23,7 +23,10 @@ webhooks.post("/zernio", async (c) => {
     console.warn("[webhook] rechazado:", err);
     return c.json({ ok: false }, 401);
   }
-  // Solo se atienden las cuentas dadas de alta (y activas) en el panel → Configuración → Conexiones
+  // Espera para juntar mensajes seguidos (panel → Ajustes)
+  deps.esperaMs = mensajes.length ? await leerEsperaMs(deps.db) : 0;
+
+  // Solo se atienden las cuentas dadas de alta (y activas) en el panel → Ajustes → Conexiones
   const procesar = async (m: (typeof mensajes)[number]) => {
     const conexion = m.cuentaId ? await repo.conexionActiva(deps.db, m.cuentaId) : null;
     if (!conexion) { console.log(`[webhook] cuenta ${m.cuentaId} no conectada a Consultin: ignorado`); return; }
@@ -32,3 +35,8 @@ webhooks.post("/zernio", async (c) => {
   c.executionCtx.waitUntil(Promise.all(mensajes.map((m) => procesar(m).catch((e) => console.error(e)))));
   return c.json({ ok: true, recibidos: mensajes.length });
 });
+
+export async function leerEsperaMs(db: Parameters<typeof repo.leerConfig>[0]): Promise<number> {
+  const v = Number(await repo.leerConfig(db, "espera_segundos").catch(() => null) ?? ESPERA_DEFAULT_S);
+  return Math.round(Math.min(Math.max(Number.isFinite(v) ? v : ESPERA_DEFAULT_S, 0), ESPERA_MAX_S) * 1000);
+}

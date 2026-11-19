@@ -35,12 +35,34 @@ export async function upsertConversacion(db: Db, p: {
   return row!;
 }
 
-/** Devuelve false si el mensaje ya existía (reintento del webhook). */
+/** Devuelve el id del mensaje, o null si ya existía (reintento del webhook). */
 export async function guardarMensaje(db: Db, p: {
   conversacionId: string; rol: "cliente" | "bot" | "agente"; contenido: string; autor?: string; externalId?: string;
-}) {
+}): Promise<string | null> {
   const rows = await db.insert(mensajes).values(p).onConflictDoNothing({ target: mensajes.externalId }).returning({ id: mensajes.id });
-  return rows.length > 0;
+  return rows[0]?.id ?? null;
+}
+
+/** Id del último mensaje del cliente en la conversación (para saber si llegó otro durante la espera). */
+export async function ultimoMensajeCliente(db: Db, conversacionId: string): Promise<string | null> {
+  const [row] = await db.select({ id: mensajes.id }).from(mensajes)
+    .where(and(eq(mensajes.conversacionId, conversacionId), eq(mensajes.rol, "cliente")))
+    .orderBy(desc(mensajes.createdAt), desc(mensajes.id)).limit(1);
+  return row?.id ?? null;
+}
+
+/** Mensajes del cliente que todavía no tienen respuesta (los que llegaron después de la última del bot o del equipo). */
+export async function textoPendiente(db: Db, conversacionId: string): Promise<string> {
+  const rows = await db.select({ rol: mensajes.rol, contenido: mensajes.contenido }).from(mensajes)
+    .where(eq(mensajes.conversacionId, conversacionId)).orderBy(desc(mensajes.createdAt)).limit(20);
+  const pendientes: string[] = [];
+  for (const r of rows) { if (r.rol !== "cliente") break; pendientes.unshift(r.contenido); }
+  return pendientes.join("\n");
+}
+
+export async function estadoConversacion(db: Db, id: string) {
+  const [row] = await db.select({ estado: conversaciones.estado }).from(conversaciones).where(eq(conversaciones.id, id));
+  return row?.estado ?? null;
 }
 
 export async function historial(db: Db, conversacionId: string, limite = 20): Promise<Turno[]> {

@@ -112,6 +112,8 @@ button:disabled { opacity: .5; cursor: default; }
 .peligro { background: #fff; color: #C0262D; border: 1px solid #F0C4C6; padding: 9px 16px; border-radius: 8px; font-weight: 600; }
 .reglas pre { white-space: pre-wrap; background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 12.5px; margin: 6px 0 0; }
 code { background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+.espera input[type=range] { flex: 1; max-width: 320px; accent-color: var(--purple); }
+.espera strong { min-width: 36px; }
 .conexiones { display: grid; gap: 10px; }
 .conexion { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 .conexion.sin { background: #FAFAFB; border-style: dashed; }

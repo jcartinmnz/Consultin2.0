@@ -14,7 +14,16 @@ export interface Deps {
   channel: ChannelAdapter;
   llm: LlmClient;
   sources: { prices: PriceSource; orders: OrderSource };
+  /**
+   * Cuánto esperar antes de responder, para juntar mensajes seguidos ("hola" / "quiero info" / "¿precio?")
+   * y contestar una sola vez. 0 = responder de inmediato.
+   */
+  esperaMs?: number;
 }
+
+/** Espera por defecto y máxima (el procesamiento corre en waitUntil, que tiene ~30 s de margen). */
+export const ESPERA_DEFAULT_S = 6;
+export const ESPERA_MAX_S = 15;
 
 /** Cómo se atiende una conexión. Sin conexión (dev, Forja) = modo ópticas con el prompt base. */
 export interface ConfigConexion { modo: "opticas" | "abierto"; prompt: string | null }
@@ -39,6 +48,15 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: Co
   // 3. Si una persona ya tomó la conversación, el bot no responde
   if (conv.estado === "humano") return;
 
+  // 3b. Ráfaga: esperar por si llegan más mensajes. Solo responde el último; como el agente lee el
+  //     historial completo, contesta a todos juntos en un solo mensaje.
+  if (d.esperaMs && d.esperaMs > 0) {
+    await new Promise((r) => setTimeout(r, d.esperaMs));
+    if ((await repo.ultimoMensajeCliente(db, conv.id)) !== nuevo) return; // llegó otro: ese responde por todos
+    if ((await repo.estadoConversacion(db, conv.id)) === "humano") return; // apagaron el agente durante la espera
+  }
+  const textoRafaga = (await repo.textoPendiente(db, conv.id)) || msg.texto;
+
   // Primero se envía y solo después se guarda: el chat del panel nunca muestra como enviado algo que no salió.
   // Si el canal falla (ventana de 24 h cerrada, cuenta desconectada…), queda un caso con el texto que no salió.
   const responder = async (texto: string) => {
@@ -62,7 +80,7 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: Co
   if (!ident && conexion.modo === "opticas") {
     await repo.crearCaso(db, {
       conversacionId: conv.id, opticaId: null, nivel: "N2", motivo: "numero_no_registrado",
-      resumen: `Número ${msg.telefono}${msg.nombrePerfil ? ` (${msg.nombrePerfil})` : ""} escribió: "${msg.texto.slice(0, 300)}"`,
+      resumen: `Número ${msg.telefono}${msg.nombrePerfil ? ` (${msg.nombrePerfil})` : ""} escribió: "${textoRafaga.slice(0, 300)}"`,
     });
     return responder(MENSAJES.noRegistrado(env.LAB_NAME));
   }
@@ -71,7 +89,7 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: Co
   const quien = ident?.optica.nombre ?? msg.nombrePerfil ?? msg.telefono;
 
   // 5. Pide hablar con una persona → caso N2 directo
-  if (pideHumano(msg.texto)) {
+  if (textoRafaga.split("\n").some(pideHumano)) {
     await repo.crearCaso(db, {
       conversacionId: conv.id, opticaId: ident?.optica.id ?? null, nivel: "N2", motivo: "pide_humano",
       resumen: resumenDesdeHistorial(turnos),

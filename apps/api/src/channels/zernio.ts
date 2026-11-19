@@ -15,16 +15,14 @@ const BASE_URL = "https://zernio.com/api/v1";
 const SIGNATURE_HEADER = "x-zernio-signature";
 const SEP = ":";
 
+/** Plataformas de mensajería de Zernio que atiende Consultin. */
+export const PLATAFORMAS = new Set(["whatsapp", "instagram", "facebook"]);
+
 export class ZernioChannel implements ChannelAdapter {
   readonly nombre = "zernio";
 
-  /**
-   * @param cuentas ids de cuentas de Zernio aceptadas (ZERNIO_ACCOUNT_IDS). Vacío = cualquier
-   *                cuenta de WhatsApp. Evita que otra cuenta conectada al mismo Zernio
-   *                (p. ej. otro número) termine hablando con el agente.
-   */
-  constructor(private apiKey: string, private webhookSecret: string, private cuentas: string[] = []) {
-    // La identidad de la óptica sale del teléfono del payload: sin firma, cualquiera podría suplantarla.
+  constructor(private apiKey: string, private webhookSecret: string) {
+    // En WhatsApp la identidad de la óptica sale del teléfono del payload: sin firma, cualquiera podría suplantarla.
     if (!webhookSecret) throw new Error("ZernioChannel requiere ZERNIO_WEBHOOK_SECRET");
   }
 
@@ -32,7 +30,7 @@ export class ZernioChannel implements ChannelAdapter {
     const raw = await req.text();
     const ok = await verificarHmac(raw, req.headers.get(SIGNATURE_HEADER), this.webhookSecret);
     if (!ok) throw new Error("Firma de webhook inválida");
-    return interpretarEvento(JSON.parse(raw), this.cuentas);
+    return interpretarEvento(JSON.parse(raw));
   }
 
   async enviar(conversacionExtId: string, texto: string) {
@@ -46,25 +44,32 @@ export class ZernioChannel implements ChannelAdapter {
   }
 }
 
-/** Convierte un evento de Zernio en mensajes para el agente. [] = ignorar (no es texto entrante de WhatsApp). */
-export function interpretarEvento(body: any, cuentas: string[] = []): InboundMessage[] {
+/**
+ * Convierte un evento de Zernio en mensajes para el agente.
+ * [] = ignorar (no es texto entrante de WhatsApp/Instagram/Messenger).
+ * Qué cuentas se atienden lo decide la tabla `conexiones` (ver routes/webhooks.ts).
+ */
+export function interpretarEvento(body: any): InboundMessage[] {
   if (body?.event !== "message.received" || body.test) return [];
   const m = body.message;
   const accountId: string | undefined = body.account?.accountId ?? body.account?.id;
-  if (!m || m.platform !== "whatsapp" || m.direction !== "incoming" || !accountId) return [];
-  if (cuentas.length && !cuentas.includes(accountId)) return [];
+  if (!m || !PLATAFORMAS.has(m.platform) || m.direction !== "incoming" || !accountId) return [];
 
   const texto = typeof m.text === "string" ? m.text.trim() : "";
   if (!texto) return []; // audios, imágenes y stickers: fuera de alcance v1
 
-  // phoneNumber viene en E.164 con "+"; sender.id es el número sin "+" (o un BSUID si el usuario lo oculta)
-  const telefono = String(m.sender?.phoneNumber ?? (/^\d+$/.test(m.sender?.id ?? "") ? m.sender.id : "")).replace(/\D/g, "");
+  // Solo WhatsApp trae teléfono: phoneNumber en E.164 con "+"; sender.id es el número sin "+" (o un BSUID)
+  const telefono = m.platform === "whatsapp"
+    ? String(m.sender?.phoneNumber ?? (/^\d+$/.test(m.sender?.id ?? "") ? m.sender.id : "")).replace(/\D/g, "")
+    : "";
+  const usuario = m.sender?.username ? `@${m.sender.username}` : null;
 
   return [{
-    canal: "whatsapp",
+    canal: m.platform,
     conversacionExtId: unirConversacionId(accountId, m.conversationId),
     telefono,
-    nombrePerfil: m.sender?.name ?? body.conversation?.participantName ?? null,
+    cuentaId: accountId,
+    nombrePerfil: m.sender?.name ?? usuario ?? body.conversation?.participantName ?? null,
     texto,
     mensajeExtId: String(m.id ?? m.platformMessageId ?? body.id),
   }];

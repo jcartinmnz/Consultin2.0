@@ -21,16 +21,16 @@ describe("interpretarEvento (Zernio → mensaje del agente)", () => {
   it("convierte un mensaje entrante de WhatsApp", () => {
     const [m] = interpretarEvento(evento());
     expect(m).toEqual({
-      canal: "whatsapp", conversacionExtId: "acc_wa:conv_1", telefono: "50688880001",
+      canal: "whatsapp", conversacionExtId: "acc_wa:conv_1", telefono: "50688880001", cuentaId: "acc_wa",
       nombrePerfil: "María", texto: "¿Cómo va la orden 48213?", mensajeExtId: "msg_1",
     });
   });
 
-  it("ignora otros eventos, pruebas, mensajes salientes y otras plataformas (ej. Instagram)", () => {
+  it("ignora otros eventos, pruebas, mensajes salientes y plataformas no soportadas", () => {
     expect(interpretarEvento(evento({ event: "message.sent" }))).toEqual([]);
     expect(interpretarEvento(evento({ test: true }))).toEqual([]);
     expect(interpretarEvento(evento({}, { direction: "outgoing" }))).toEqual([]);
-    expect(interpretarEvento(evento({}, { platform: "instagram" }))).toEqual([]);
+    expect(interpretarEvento(evento({}, { platform: "tiktok" }))).toEqual([]);
     expect(interpretarEvento({ event: "webhook.test" })).toEqual([]);
   });
 
@@ -38,9 +38,10 @@ describe("interpretarEvento (Zernio → mensaje del agente)", () => {
     expect(interpretarEvento(evento({}, { text: null, attachments: [{ type: "audio", url: "x" }] }))).toEqual([]);
   });
 
-  it("filtra por cuenta si ZERNIO_ACCOUNT_IDS está definido", () => {
-    expect(interpretarEvento(evento(), ["acc_otra"])).toEqual([]);
-    expect(interpretarEvento(evento(), ["acc_otra", "acc_wa"])).toHaveLength(1);
+  it("acepta DMs de Instagram: sin teléfono (la identidad nunca sale del texto ni del nombre)", () => {
+    const [m] = interpretarEvento(evento({ account: { id: "acc_ig", accountId: "acc_ig", platform: "instagram", username: "expertiacr" } },
+      { platform: "instagram", sender: { id: "17841400000000000", username: "optica_falsa", name: "Óptica Demo Central", phoneNumber: "+50688880001" } }));
+    expect(m).toMatchObject({ canal: "instagram", conversacionExtId: "acc_ig:conv_1", telefono: "", cuentaId: "acc_ig", nombrePerfil: "Óptica Demo Central" });
   });
 
   it("usa sender.id si no viene phoneNumber, y deja vacío un BSUID (no es teléfono)", () => {

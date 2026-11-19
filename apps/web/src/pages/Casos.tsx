@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { api, type Caso, type EstadoCaso, type Mensaje, type Nota } from "../api";
+import { api, nombreChat, type Caso, type EstadoCaso, type Mensaje, type Nota } from "../api";
 import { useApi } from "../useApi";
 import { Formato } from "../Formato";
 
-interface FilaCaso { caso: Caso; optica: string | null; telefono: string }
+interface FilaCaso { caso: Caso; optica: string | null; telefono: string | null; participante: string | null; plataforma: string | null }
 interface Detalle { caso: Caso; mensajes: Mensaje[]; notas: Nota[] }
 
 const ESTADOS: EstadoCaso[] = ["nuevo", "en_atencion", "en_espera", "resuelto"];
@@ -25,10 +25,10 @@ export function Casos() {
           </select>
         </header>
         {lista.error && <p className="error">{lista.error}</p>}
-        {lista.data?.map(({ caso, optica, telefono }) => (
+        {lista.data?.map(({ caso, optica, telefono, participante }) => (
           <button key={caso.id} className={`item ${sel === caso.id ? "on" : ""}`} onClick={() => setSel(caso.id)}>
             <span className={`nivel ${caso.nivel}`}>{caso.nivel}</span>
-            <strong>{optica ?? telefono}</strong>
+            <strong>{nombreChat({ optica, participanteNombre: participante, telefono })}</strong>
             <small>{caso.motivo.replaceAll("_", " ")} · {new Date(caso.createdAt).toLocaleString("es-CR")}</small>
           </button>
         ))}

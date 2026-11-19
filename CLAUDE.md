@@ -24,17 +24,21 @@ El agente, las rutas y el CRM SOLO dependen de interfaces. Cada dato externo tie
 
 Para conectar un dato real: implementar la interfaz, registrarla en `sources/index.ts` o `channels/index.ts`, cambiar la variable en `wrangler.toml`. **No tocar el agente.**
 
-## Flujo de un mensaje (`services/procesar.ts`)
-1. Identificar óptica por teléfono (`contactos.telefono`, autorizado) → si no existe: caso N2 `numero_no_registrado`, sin LLM.
+## Flujo de un mensaje (`routes/webhooks.ts` → `services/procesar.ts`)
+0. El webhook solo atiende cuentas de Zernio dadas de alta y activas en la tabla `conexiones` (panel → Ajustes). Cada conexión tiene `modo` (`opticas` | `abierto`) y `prompt` opcional.
+1. Identificar óptica por teléfono de WhatsApp (`contactos.telefono`, autorizado). Instagram/Messenger no traen teléfono → nunca hay óptica identificada.
+   - Modo `opticas` sin identidad: caso N2 `numero_no_registrado`, sin LLM.
+   - Modo `abierto` sin identidad: el agente atiende solo con `escalar_a_humano` (`toolsPara(false)`); `buscar_precio` y `estado_orden` rechazan sin óptica.
 2. Upsert conversación + guardar mensaje (idempotente por `externalId`).
 3. Si la conversación está en estado `humano` → el bot NO responde.
 4. Regla determinista "pide hablar con una persona" → caso N2, sin LLM.
-5. Agente (`agent/run.ts`): loop de tool calling, máx. 6 iteraciones.
-6. Guardar respuesta, enviar por el canal, registrar eventos (alimentan el dashboard).
+5. Agente (`agent/run.ts`): loop de tool calling, máx. 6 iteraciones. Prompt = instrucciones editables (prompt de la conexión, o `configuracion.prompt_base`, o `PROMPT_BASE_DEFAULT`) + contexto + `REGLAS_FIJAS`.
+6. Enviar por el canal y, solo si salió, guardar la respuesta y registrar eventos. Si el envío falla: caso con el texto que no salió.
 
 ## Reglas que NO se rompen
 - Precios, estados y fechas **solo** salen de herramientas. El prompt lo exige y el código nunca deja que el modelo los genere.
-- Una óptica **solo** ve sus órdenes: `estado_orden` compara `codigoCliente` contra la óptica identificada por teléfono. La identidad nunca viene del modelo ni del texto del usuario.
+- Una óptica **solo** ve sus órdenes: `estado_orden` compara `codigoCliente` contra la óptica identificada por teléfono. La identidad nunca viene del modelo, del texto ni del nombre de perfil (un usuario de Instagram puede llamarse como una óptica).
+- Las reglas de seguridad del prompt viven en el código (`REGLAS_FIJAS`), no en el prompt editable.
 - Nunca exponer recetas, nombres de pacientes ni datos clínicos (Ley 8968). La vista de LensWare no debe incluirlos.
 - Acceso a LensWare **solo lectura** (usuario MySQL con `SELECT` sobre una vista).
 - Todo endpoint que acepte un teléfono como identidad debe estar autenticado: el webhook de Zernio exige firma HMAC (`ZERNIO_WEBHOOK_SECRET` obligatorio) y `/dev/*`, `/crm/*`, `/metrics/*` y `/tools/*` exigen clave. Comparar secretos solo con `lib/seguridad.ts`.
@@ -52,7 +56,7 @@ pnpm --filter api db:migrate
 pnpm --filter api db:seed      # 2 ópticas demo + precios mock
 ```
 
-Probar el agente sin WhatsApp (`CHANNEL=dev`):
+Probar el agente sin WhatsApp (`/dev/chat`, requiere `SIMULADOR = "on"` en `wrangler.toml`; en producción está en `off`):
 ```bash
 curl -X POST localhost:8787/dev/chat -H 'content-type: application/json' \
   -H "authorization: Bearer $ADMIN_API_KEY" \

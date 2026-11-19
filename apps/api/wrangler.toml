@@ -8,10 +8,9 @@ compatibility_flags = ["nodejs_compat"]
 PRICES_SOURCE = "mock"   # mock | neon
 ORDERS_SOURCE = "mock"   # mock | lensware
 CHANNEL = "zernio"       # dev | zernio
-SIMULADOR = "on"         # simulador del panel (/dev/*): on | off
-# Cuentas de Zernio que atiende el agente (coma). Hoy: sandbox compartido de WhatsApp de Zernio.
-# Cuando se conecte el número de Topex, reemplazar por su accountId (GET /v1/accounts).
-ZERNIO_ACCOUNT_IDS = "6a180a034c7f364ffded3c9c"
+SIMULADOR = "off"        # /dev/chat para pruebas con curl: on | off
+# Qué cuentas de Zernio atiende el agente se configura en el panel → Configuración → Conexiones.
+PANEL_URL = "https://consultin-web.expertia-cr.workers.dev"   # a donde vuelve el usuario tras conectar una cuenta
 ANTHROPIC_MODEL = "claude-sonnet-5-5"
 LAB_NAME = "Laboratorio Óptico Topex"
 

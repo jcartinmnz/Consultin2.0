@@ -64,13 +64,23 @@ de las cuentas en `ZERNIO_ACCOUNT_IDS` (otras cuentas del mismo Zernio, como Ins
 El simulador del panel sigue funcionando con `CHANNEL=zernio` (usa su propio canal `dev`; `SIMULADOR=off` lo apaga).
 El webhook solo se activa con `CHANNEL=zernio`.
 
-## Demo en vivo
+## Panel
 
-- Panel (web y celular): https://consultin-web.expertia-cr.workers.dev — entrar con `ADMIN_API_KEY`.
-  Atajo para celular: `https://consultin-web.expertia-cr.workers.dev/#clave=<ADMIN_API_KEY>` (el `#` no se envía al servidor; la clave se guarda y se borra de la URL).
-- **Simulador**: escribir como una óptica demo y ver a Consultin responder con Claude. "Nueva conversación" reinicia la demo.
-  Si se pide una persona, el caso aparece en **Casos**; lo que se responda ahí llega al simulador.
-- Las órdenes mock se desplazan a la fecha de hoy (48213 en tiempo, 48105 atrasada, 48220 en HOLD), así la demo se ve igual cualquier día.
+https://consultin-web.expertia-cr.workers.dev — entrar con `ADMIN_API_KEY`
+(atajo: `/#clave=<ADMIN_API_KEY>`; el `#` no se envía al servidor y la clave se borra de la URL).
+
+- **Chats**: todas las conversaciones de las cuentas conectadas (WhatsApp, Instagram, Messenger), con lo que escribe
+  la persona y lo que responde el agente. Interruptor **Agente activo / apagado** por conversación; con el agente apagado
+  solo responde el equipo desde el panel. Escalar o abrir un caso también apaga el agente; resolver el caso lo enciende.
+- **Casos**: lo que el agente pasó a una persona.
+- **Ajustes**:
+  - *Prompt base*: instrucciones del agente, editables. Las reglas de seguridad, la fecha, el canal y quién escribe
+    las agrega siempre el código (`agent/prompt.ts` → `REGLAS_FIJAS`) y no se pueden borrar desde el panel.
+  - *Conexiones*: cuentas de Zernio que atiende Consultin. Cada una tiene modo y, opcionalmente, prompt propio:
+    - **Solo ópticas**: responde únicamente a teléfonos de WhatsApp registrados en Ópticas, con precios y órdenes.
+    - **Abierto**: responde a cualquiera (p. ej. DMs de Instagram), pero solo puede escalar: nunca precios ni órdenes.
+    - "+ Instagram / WhatsApp / Messenger" abre el OAuth de Zernio para conectar una cuenta nueva.
+    - Quitar una conexión solo hace que Consultin deje de atenderla; no desconecta nada en Zernio.
 
 ## Deploy
 ```bash

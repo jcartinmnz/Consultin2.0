@@ -5,8 +5,8 @@ export interface Env {
   CHANNEL: "dev" | "zernio";
   /** Simulador del panel (/dev/*). "off" lo apaga. Independiente de CHANNEL. */
   SIMULADOR?: "on" | "off";
-  /** Ids de cuentas de Zernio aceptadas, separados por coma. Vacío = cualquier cuenta de WhatsApp. */
-  ZERNIO_ACCOUNT_IDS?: string;
+  /** URL del panel, a donde vuelve el usuario tras conectar una cuenta en Zernio. */
+  PANEL_URL?: string;
   ANTHROPIC_MODEL: string;
   LAB_NAME: string;
 

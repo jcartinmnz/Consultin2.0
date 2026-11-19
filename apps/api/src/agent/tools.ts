@@ -13,7 +13,8 @@ export interface OpticaCtx { id: string; nombre: string; codigoLensware: string 
 export interface ToolContext {
   prices: PriceSource;
   orders: OrderSource;
-  optica: OpticaCtx;
+  /** null = remitente no identificado (p. ej. un DM de Instagram): solo puede escalar. */
+  optica: OpticaCtx | null;
   escalar: (e: { nivel: "N2" | "N3"; motivo: string; resumen: string }) => Promise<void>;
   ahora?: Date;
 }
@@ -61,6 +62,13 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
   },
 ];
 
+/** Herramientas que se ofrecen al modelo: sin óptica identificada, solo escalar. */
+export function toolsPara(identificado: boolean): Anthropic.Messages.Tool[] {
+  return identificado ? TOOLS : TOOLS.filter((t) => t.name === "escalar_a_humano");
+}
+
+const SIN_IDENTIDAD = { ok: false, data: { error: "No disponible: quien escribe no es una óptica cliente identificada. Ofrecé pasar la consulta a una persona del equipo." } };
+
 /* ───────────── Ejecución ───────────── */
 
 const precioInput = z.object({
@@ -78,12 +86,16 @@ export interface ToolResult { ok: boolean; data: unknown; escalado?: boolean }
 export async function ejecutarTool(name: string, input: unknown, ctx: ToolContext): Promise<ToolResult> {
   switch (name) {
     case "buscar_precio": {
+      // Defensa en profundidad: aunque el modelo invente la llamada, sin identidad no hay datos.
+      if (!ctx.optica) return SIN_IDENTIDAD;
       const q = precioInput.parse(input);
       const resultados = await ctx.prices.buscar(q, 5);
       return { ok: true, data: resultados.length ? { resultados } : { resultados: [], nota: "Sin coincidencias en la lista de precios." } };
     }
 
     case "estado_orden": {
+      if (!ctx.optica) return SIN_IDENTIDAD;
+      const optica = ctx.optica;
       const { numero_orden } = ordenInput.parse(input);
       const vista = (o: EstadoOrden) => {
         const def = traducirEstado(o.estadoCodigo);
@@ -97,12 +109,12 @@ export async function ejecutarTool(name: string, input: unknown, ctx: ToolContex
       if (numero_orden) {
         const o = await ctx.orders.obtener(numero_orden);
         // Seguridad: una óptica solo ve sus órdenes. Mismo mensaje si no existe o es de otro cliente.
-        if (!o || o.codigoCliente !== ctx.optica.codigoLensware) {
+        if (!o || o.codigoCliente !== optica.codigoLensware) {
           return { ok: true, data: { encontrada: false, nota: "No se encontró esa orden para esta óptica." } };
         }
         return { ok: true, data: { encontrada: true, orden: vista(o) } };
       }
-      const recientes = await ctx.orders.recientes(ctx.optica.codigoLensware, 5);
+      const recientes = await ctx.orders.recientes(optica.codigoLensware, 5);
       return { ok: true, data: { ordenes: recientes.map(vista) } };
     }
 

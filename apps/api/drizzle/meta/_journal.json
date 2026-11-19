@@ -15,6 +15,13 @@
       "when": 1794684172583,
       "tag": "0001_caso_abierto_unico",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795124522797,
+      "tag": "0002_conexiones_y_chats",
+      "breakpoints": true
     }
   ]
 }

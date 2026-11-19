@@ -1,8 +1,11 @@
 /** Mensaje entrante normalizado: lo que el agente necesita, sin importar el proveedor. */
 export interface InboundMessage {
-  canal: string;            // "whatsapp" | "dev"
+  canal: string;            // "whatsapp" | "instagram" | "facebook" | "dev"
   conversacionExtId: string;
-  telefono: string;         // E.164 sin "+"
+  /** E.164 sin "+". Vacío en Instagram/Messenger (no exponen teléfono). */
+  telefono: string;
+  /** Cuenta de Zernio que recibió el mensaje (ver tabla conexiones). Ausente en dev. */
+  cuentaId?: string;
   nombrePerfil: string | null;
   texto: string;
   mensajeExtId: string;     // para deduplicar reintentos del webhook

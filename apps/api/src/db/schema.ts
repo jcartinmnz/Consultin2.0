@@ -55,8 +55,13 @@ export const estadoCaso = pgEnum("estado_caso", ["nuevo", "en_atencion", "en_esp
 export const conversaciones = pgTable("conversaciones", {
   id: uuid("id").primaryKey().defaultRandom(),
   canal: text("canal").notNull(),                 // whatsapp | dev
-  externalId: text("external_id").notNull(),      // id de conversación en Zernio
-  telefono: text("telefono").notNull(),
+  externalId: text("external_id").notNull(),      // id de conversación en Zernio ("<accountId>:<conversationId>")
+  /** Solo WhatsApp. Instagram/Messenger no exponen teléfono. */
+  telefono: text("telefono"),
+  plataforma: text("plataforma"),                 // whatsapp | instagram | facebook | dev
+  /** Cuenta de Zernio por la que entró (ver tabla conexiones) */
+  cuentaId: text("cuenta_id"),
+  participanteNombre: text("participante_nombre"),
   opticaId: uuid("optica_id").references(() => opticas.id),
   estado: estadoConversacion("estado").notNull().default("bot"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -97,6 +102,28 @@ export const notasCaso = pgTable("notas_caso", {
   autor: text("autor").notNull(),
   texto: text("texto").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ───────────── Configuración del agente (editable desde el panel) ───────────── */
+
+/** Cuentas de Zernio que atiende Consultin. Una cuenta sin fila (o inactiva) se ignora. */
+export const conexiones = pgTable("conexiones", {
+  cuentaId: text("cuenta_id").primaryKey(),       // _id de la cuenta en Zernio
+  plataforma: text("plataforma").notNull(),
+  nombre: text("nombre").notNull(),               // @usuario o número, para mostrar
+  /** opticas = solo números registrados, todas las herramientas · abierto = cualquiera, solo escalar */
+  modo: text("modo").notNull().default("opticas"),
+  /** Prompt propio de esta conexión. null = usa el prompt base. */
+  prompt: text("prompt"),
+  activa: boolean("activa").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Pares clave/valor: prompt_base, etc. */
+export const configuracion = pgTable("configuracion", {
+  clave: text("clave").primaryKey(),
+  valor: text("valor").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /* ───────────── Analytics (alimenta el dashboard) ───────────── */

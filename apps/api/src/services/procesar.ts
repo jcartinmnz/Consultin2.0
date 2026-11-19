@@ -3,6 +3,7 @@ import type { Db } from "../db/client";
 import type { ChannelAdapter, InboundMessage } from "../channels/types";
 import type { OrderSource, PriceSource } from "../sources/types";
 import { correrAgente, type LlmClient } from "../agent/run";
+import { toolsPara } from "../agent/tools";
 import { systemPrompt } from "../agent/prompt";
 import * as repo from "./repo";
 import { MENSAJES, pideHumano, resumenDesdeHistorial } from "./reglas";
@@ -15,15 +16,19 @@ export interface Deps {
   sources: { prices: PriceSource; orders: OrderSource };
 }
 
+/** Cómo se atiende una conexión. Sin conexión (dev, Forja) = modo ópticas con el prompt base. */
+export interface ConfigConexion { modo: "opticas" | "abierto"; prompt: string | null }
+
 /** Flujo completo de un mensaje entrante. Ver CLAUDE.md → "Flujo de un mensaje". */
-export async function procesarMensaje(d: Deps, msg: InboundMessage): Promise<void> {
+export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: ConfigConexion = { modo: "opticas", prompt: null }): Promise<void> {
   const { db, env, channel } = d;
   const t0 = Date.now();
 
-  // 1. Identidad: el número debe pertenecer a una óptica registrada
-  const ident = await repo.identificar(db, msg.telefono);
+  // 1. Identidad: solo un teléfono de WhatsApp registrado identifica a una óptica (nunca el texto ni el nombre)
+  const ident = msg.telefono ? await repo.identificar(db, msg.telefono) : null;
   const conv = await repo.upsertConversacion(db, {
     canal: msg.canal, externalId: msg.conversacionExtId, telefono: msg.telefono, opticaId: ident?.optica.id ?? null,
+    cuentaId: msg.cuentaId, participanteNombre: msg.nombrePerfil,
   });
 
   // 2. Guardar mensaje (idempotente ante reintentos del webhook)
@@ -34,14 +39,27 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage): Promise<voi
   // 3. Si una persona ya tomó la conversación, el bot no responde
   if (conv.estado === "humano") return;
 
+  // Primero se envía y solo después se guarda: el chat del panel nunca muestra como enviado algo que no salió.
+  // Si el canal falla (ventana de 24 h cerrada, cuenta desconectada…), queda un caso con el texto que no salió.
   const responder = async (texto: string) => {
+    try {
+      await channel.enviar(msg.conversacionExtId, texto);
+    } catch (err) {
+      console.error("[envío]", err);
+      await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "error", metadata: { etapa: "envio", mensaje: String(err).slice(0, 500) } });
+      await repo.crearCaso(db, {
+        conversacionId: conv.id, opticaId: ident?.optica.id ?? null, nivel: "N2", motivo: "otro",
+        resumen: `No se pudo enviar la respuesta por ${msg.canal} (${String((err as Error).message ?? err).slice(0, 200)}).\nRespuesta que no salió: ${texto.slice(0, 800)}`,
+      });
+      return;
+    }
     await repo.guardarMensaje(db, { conversacionId: conv.id, rol: "bot", contenido: texto });
-    await channel.enviar(msg.conversacionExtId, texto);
     await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "respuesta", latenciaMs: Date.now() - t0 });
   };
 
-  // 4. Número no registrado → caso N2, sin pasar por el modelo
-  if (!ident) {
+  // 4. Modo ópticas + número no registrado → caso N2, sin pasar por el modelo.
+  //    En modo abierto (p. ej. Instagram) el agente atiende igual, pero sin precios ni órdenes.
+  if (!ident && conexion.modo === "opticas") {
     await repo.crearCaso(db, {
       conversacionId: conv.id, opticaId: null, nivel: "N2", motivo: "numero_no_registrado",
       resumen: `Número ${msg.telefono}${msg.nombrePerfil ? ` (${msg.nombrePerfil})` : ""} escribió: "${msg.texto.slice(0, 300)}"`,
@@ -50,39 +68,47 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage): Promise<voi
   }
 
   const turnos = await repo.historial(db, conv.id);
+  const quien = ident?.optica.nombre ?? msg.nombrePerfil ?? msg.telefono;
 
   // 5. Pide hablar con una persona → caso N2 directo
   if (pideHumano(msg.texto)) {
     await repo.crearCaso(db, {
-      conversacionId: conv.id, opticaId: ident.optica.id, nivel: "N2", motivo: "pide_humano",
+      conversacionId: conv.id, opticaId: ident?.optica.id ?? null, nivel: "N2", motivo: "pide_humano",
       resumen: resumenDesdeHistorial(turnos),
     });
     return responder(MENSAJES.handoff);
   }
 
   // 6. Agente con herramientas
+  let texto: string;
   try {
+    const instrucciones = conexion.prompt ?? await repo.leerConfig(db, "prompt_base");
     const r = await correrAgente({
       llm: d.llm,
       model: env.ANTHROPIC_MODEL,
-      system: systemPrompt({ lab: env.LAB_NAME, optica: ident.optica, contacto: ident.contacto.nombre, ahora: new Date() }),
+      system: systemPrompt({
+        instrucciones, lab: env.LAB_NAME, optica: ident?.optica ?? null, contacto: ident?.contacto.nombre ?? null,
+        participante: msg.nombrePerfil, plataforma: msg.canal, herramientasCompletas: !!ident, ahora: new Date(),
+      }),
       historial: turnos,
+      tools: toolsPara(!!ident),
       ctx: {
         prices: d.sources.prices,
         orders: d.sources.orders,
-        optica: ident.optica,
-        escalar: async (e) => { await repo.crearCaso(db, { conversacionId: conv.id, opticaId: ident.optica.id, ...e }); },
+        optica: ident?.optica ?? null,
+        escalar: async (e) => { await repo.crearCaso(db, { conversacionId: conv.id, opticaId: ident?.optica.id ?? null, ...e }); },
       },
     });
     for (const tc of r.toolCalls) {
       await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "tool_call", tool: tc.tool, ok: tc.ok, latenciaMs: tc.latenciaMs, metadata: { input: tc.input } });
     }
     await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "uso_llm", metadata: r.usage });
-    await responder(r.texto || MENSAJES.handoff);
+    texto = r.texto || MENSAJES.handoff;
   } catch (err) {
     console.error("[agente]", err);
-    await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "error", metadata: { mensaje: String(err) } });
-    await repo.crearCaso(db, { conversacionId: conv.id, opticaId: ident.optica.id, nivel: "N2", motivo: "otro", resumen: `Error técnico del agente.\n${resumenDesdeHistorial(turnos)}` });
-    await responder(MENSAJES.errorGeneral);
+    await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "error", metadata: { etapa: "agente", mensaje: String(err).slice(0, 500) } });
+    await repo.crearCaso(db, { conversacionId: conv.id, opticaId: ident?.optica.id ?? null, nivel: "N2", motivo: "otro", resumen: `Error técnico del agente (${quien}).\n${resumenDesdeHistorial(turnos)}` });
+    texto = MENSAJES.errorGeneral;
   }
+  await responder(texto);
 }

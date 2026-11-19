@@ -5,10 +5,11 @@ import { getKey, setKey } from "./api";
 import { Dashboard } from "./pages/Dashboard";
 import { Casos } from "./pages/Casos";
 import { Opticas } from "./pages/Opticas";
-import { Simulador } from "./pages/Simulador";
+import { Chats } from "./pages/Chats";
+import { Configuracion } from "./pages/Configuracion";
 
-type Vista = "simulador" | "casos" | "dashboard" | "opticas";
-const VISTAS: Record<Vista, string> = { simulador: "Simulador", casos: "Casos", dashboard: "Dashboard", opticas: "Ópticas" };
+type Vista = "chats" | "casos" | "dashboard" | "opticas" | "config";
+const VISTAS: Record<Vista, string> = { chats: "Chats", casos: "Casos", dashboard: "Dashboard", opticas: "Ópticas", config: "Ajustes" };
 
 /**
  * Acceso rápido por enlace: https://<panel>/#clave=XXXX guarda la clave y la quita de la URL.
@@ -24,7 +25,7 @@ function claveDesdeEnlace() {
 claveDesdeEnlace();
 
 function App() {
-  const [vista, setVista] = useState<Vista>("simulador");
+  const [vista, setVista] = useState<Vista>("chats");
   const [key, setK] = useState(getKey());
 
   if (!key) {
@@ -51,7 +52,8 @@ function App() {
         <button className="salir" onClick={() => { setKey(""); setK(""); }}>Salir</button>
       </aside>
       <main className={`vista-${vista}`}>
-        {vista === "simulador" && <Simulador />}
+        {vista === "chats" && <Chats />}
+        {vista === "config" && <Configuracion />}
         {vista === "dashboard" && <Dashboard />}
         {vista === "casos" && <Casos />}
         {vista === "opticas" && <Opticas />}

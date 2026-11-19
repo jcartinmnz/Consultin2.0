@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { casos, contactos, conversaciones, eventos, mensajes, opticas } from "../db/schema";
+import { casos, configuracion, conexiones, contactos, conversaciones, eventos, mensajes, opticas } from "../db/schema";
 import type { Turno } from "../agent/run";
 
 export async function identificar(db: Db, telefono: string) {
@@ -13,13 +13,23 @@ export async function identificar(db: Db, telefono: string) {
   return row ?? null;
 }
 
-export async function upsertConversacion(db: Db, p: { canal: string; externalId: string; telefono: string; opticaId: string | null }) {
+export async function upsertConversacion(db: Db, p: {
+  canal: string; externalId: string; telefono: string | null; opticaId: string | null;
+  cuentaId?: string | null; participanteNombre?: string | null;
+}) {
+  const datos = {
+    opticaId: p.opticaId,
+    ...(p.participanteNombre ? { participanteNombre: p.participanteNombre } : {}),
+  };
   const [row] = await db
     .insert(conversaciones)
-    .values({ canal: p.canal, externalId: p.externalId, telefono: p.telefono, opticaId: p.opticaId })
+    .values({
+      canal: p.canal, plataforma: p.canal, externalId: p.externalId, telefono: p.telefono || null,
+      cuentaId: p.cuentaId ?? null, ...datos,
+    })
     .onConflictDoUpdate({
       target: [conversaciones.canal, conversaciones.externalId],
-      set: { lastMessageAt: new Date(), opticaId: p.opticaId },
+      set: { lastMessageAt: new Date(), ...datos },
     })
     .returning();
   return row!;
@@ -72,4 +82,23 @@ export async function registrarEvento(db: Db, e: {
   conversacionId?: string | null; tipo: string; tool?: string; ok?: boolean; latenciaMs?: number; metadata?: Record<string, unknown>;
 }) {
   await db.insert(eventos).values(e);
+}
+
+/* ───────────── Configuración y conexiones ───────────── */
+
+export type Conexion = typeof conexiones.$inferSelect;
+
+export async function conexionActiva(db: Db, cuentaId: string): Promise<Conexion | null> {
+  const [row] = await db.select().from(conexiones).where(and(eq(conexiones.cuentaId, cuentaId), eq(conexiones.activa, true)));
+  return row ?? null;
+}
+
+export async function leerConfig(db: Db, clave: string): Promise<string | null> {
+  const [row] = await db.select().from(configuracion).where(eq(configuracion.clave, clave));
+  return row?.valor ?? null;
+}
+
+export async function guardarConfig(db: Db, clave: string, valor: string) {
+  await db.insert(configuracion).values({ clave, valor })
+    .onConflictDoUpdate({ target: configuracion.clave, set: { valor, updatedAt: new Date() } });
 }

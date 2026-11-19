@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppBindings } from "../env";
 import { buildDeps } from "../deps";
 import { procesarMensaje } from "../services/procesar";
+import * as repo from "../services/repo";
 
 export const webhooks = new Hono<AppBindings>();
 
@@ -22,6 +23,12 @@ webhooks.post("/zernio", async (c) => {
     console.warn("[webhook] rechazado:", err);
     return c.json({ ok: false }, 401);
   }
-  c.executionCtx.waitUntil(Promise.all(mensajes.map((m) => procesarMensaje(deps, m).catch((e) => console.error(e)))));
+  // Solo se atienden las cuentas dadas de alta (y activas) en el panel → Configuración → Conexiones
+  const procesar = async (m: (typeof mensajes)[number]) => {
+    const conexion = m.cuentaId ? await repo.conexionActiva(deps.db, m.cuentaId) : null;
+    if (!conexion) { console.log(`[webhook] cuenta ${m.cuentaId} no conectada a Consultin: ignorado`); return; }
+    await procesarMensaje(deps, m, { modo: conexion.modo === "abierto" ? "abierto" : "opticas", prompt: conexion.prompt });
+  };
+  c.executionCtx.waitUntil(Promise.all(mensajes.map((m) => procesar(m).catch((e) => console.error(e)))));
   return c.json({ ok: true, recibidos: mensajes.length });
 });

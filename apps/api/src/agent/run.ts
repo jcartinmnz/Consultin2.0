@@ -25,6 +25,8 @@ export async function correrAgente(opts: {
   system: string;
   historial: Turno[];
   ctx: ToolContext;
+  /** Herramientas ofrecidas al modelo (default: todas). */
+  tools?: Anthropic.Messages.Tool[];
 }): Promise<AgentResult> {
   const messages = aMensajes(opts.historial);
   const toolCalls: ToolCallLog[] = [];
@@ -36,7 +38,7 @@ export async function correrAgente(opts: {
       model: opts.model,
       max_tokens: 1024,
       system: opts.system,
-      tools: TOOLS,
+      tools: opts.tools ?? TOOLS,
       messages,
     });
     usage.input += res.usage.input_tokens;
@@ -53,6 +55,12 @@ export async function correrAgente(opts: {
     for (const b of res.content) {
       if (b.type !== "tool_use") continue;
       const t0 = Date.now();
+      if (!(opts.tools ?? TOOLS).some((t) => t.name === b.name)) {
+        // El modelo pidió una herramienta que no se le ofreció en esta conversación
+        toolCalls.push({ tool: b.name, ok: false, latenciaMs: 0, input: b.input });
+        resultados.push({ type: "tool_result", tool_use_id: b.id, is_error: true, content: JSON.stringify({ error: "Herramienta no disponible en esta conversación." }) });
+        continue;
+      }
       try {
         const r = await ejecutarTool(b.name, b.input, opts.ctx);
         if (r.escalado) escalado = true;

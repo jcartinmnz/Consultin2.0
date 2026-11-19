@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { AppBindings } from "../env";
 import { getDb } from "../db/client";
-import { casos, contactos, conversaciones, mensajes, notasCaso, opticas } from "../db/schema";
+import { casos, configuracion, conexiones, contactos, conversaciones, mensajes, notasCaso, opticas } from "../db/schema";
 import { canalDeConversacion } from "../channels";
 import * as repo from "../services/repo";
+import { PROMPT_BASE_DEFAULT, REGLAS_FIJAS } from "../agent/prompt";
+import { listarCuentas, urlConectar, type CuentaZernio } from "../lib/zernio-api";
 
 export const crm = new Hono<AppBindings>();
 
@@ -15,7 +17,7 @@ crm.get("/casos", async (c) => {
   const db = getDb(c.env.DATABASE_URL);
   const estado = c.req.query("estado") as (typeof casos.$inferSelect)["estado"] | undefined;
   const rows = await db
-    .select({ caso: casos, optica: opticas.nombre, telefono: conversaciones.telefono })
+    .select({ caso: casos, optica: opticas.nombre, telefono: conversaciones.telefono, participante: conversaciones.participanteNombre, plataforma: conversaciones.plataforma })
     .from(casos)
     .innerJoin(conversaciones, eq(casos.conversacionId, conversaciones.id))
     .leftJoin(opticas, eq(casos.opticaId, opticas.id))
@@ -113,4 +115,132 @@ crm.patch("/contactos/:id", async (c) => {
   const body = z.object({ autorizado: z.boolean() }).parse(await c.req.json());
   const [row] = await db.update(contactos).set(body).where(and(eq(contactos.id, c.req.param("id")))).returning();
   return c.json(row);
+});
+
+/* ───────────── Chats (todas las conversaciones) ───────────── */
+
+crm.get("/conversaciones", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const rows = await db.execute(sql`
+    SELECT cv.id, cv.canal, cv.plataforma, cv.estado, cv.telefono, cv.participante_nombre AS "participanteNombre",
+           cv.last_message_at AS "lastMessageAt", o.nombre AS optica, cx.nombre AS cuenta,
+           (SELECT contenido FROM mensajes m WHERE m.conversacion_id = cv.id ORDER BY created_at DESC LIMIT 1) AS ultimo,
+           (SELECT rol FROM mensajes m WHERE m.conversacion_id = cv.id ORDER BY created_at DESC LIMIT 1) AS "ultimoRol",
+           EXISTS (SELECT 1 FROM casos cs WHERE cs.conversacion_id = cv.id AND cs.estado <> 'resuelto') AS "casoAbierto"
+    FROM conversaciones cv
+    LEFT JOIN opticas o ON o.id = cv.optica_id
+    LEFT JOIN conexiones cx ON cx.cuenta_id = cv.cuenta_id
+    WHERE cv.canal <> 'dev'
+    ORDER BY cv.last_message_at DESC LIMIT 200`);
+  return c.json(rows.rows);
+});
+
+crm.get("/conversaciones/:id", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const [conv] = await db.select().from(conversaciones).where(eq(conversaciones.id, c.req.param("id")));
+  if (!conv) return c.json({ error: "No existe" }, 404);
+  const chat = await db.select().from(mensajes).where(eq(mensajes.conversacionId, conv.id)).orderBy(asc(mensajes.createdAt));
+  const [optica] = conv.opticaId ? await db.select().from(opticas).where(eq(opticas.id, conv.opticaId)) : [];
+  return c.json({ conversacion: conv, optica: optica ?? null, mensajes: chat, caso: await repo.casoAbierto(db, conv.id) });
+});
+
+/** Encender o apagar el agente en una conversación. Apagado = solo responde una persona desde el panel. */
+crm.patch("/conversaciones/:id", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const { agenteActivo } = z.object({ agenteActivo: z.boolean() }).parse(await c.req.json());
+  const [conv] = await db.update(conversaciones).set({ estado: agenteActivo ? "bot" : "humano" })
+    .where(eq(conversaciones.id, c.req.param("id"))).returning();
+  if (!conv) return c.json({ error: "No existe" }, 404);
+  return c.json(conv);
+});
+
+/** Una persona del equipo escribe en la conversación (sale por el mismo canal: WhatsApp o Instagram). */
+crm.post("/conversaciones/:id/mensajes", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const { autor, texto } = z.object({ autor: z.string(), texto: z.string().min(1) }).parse(await c.req.json());
+  const [conv] = await db.select().from(conversaciones).where(eq(conversaciones.id, c.req.param("id")));
+  if (!conv) return c.json({ error: "No existe" }, 404);
+  const canal = canalDeConversacion(c.env, conv.canal);
+  if (!canal) return c.json({ error: `No se puede responder por el canal "${conv.canal}" desde el panel` }, 409);
+  try {
+    await canal.enviar(conv.externalId, texto);
+  } catch (err) {
+    return c.json({ error: `El mensaje no salió: ${String((err as Error).message).slice(0, 300)}` }, 502);
+  }
+  await repo.guardarMensaje(db, { conversacionId: conv.id, rol: "agente", contenido: texto, autor });
+  return c.json({ ok: true }, 201);
+});
+
+/* ───────────── Configuración: prompt ───────────── */
+
+crm.get("/config/prompt", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const guardado = await repo.leerConfig(db, "prompt_base");
+  return c.json({ prompt: guardado ?? PROMPT_BASE_DEFAULT, personalizado: guardado !== null, porDefecto: PROMPT_BASE_DEFAULT, reglasFijas: REGLAS_FIJAS });
+});
+
+crm.put("/config/prompt", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const { prompt } = z.object({ prompt: z.string().trim().min(20, "El prompt es muy corto").max(20000) }).parse(await c.req.json());
+  await repo.guardarConfig(db, "prompt_base", prompt);
+  return c.json({ ok: true });
+});
+
+/** Volver al prompt por defecto del código. */
+crm.delete("/config/prompt", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  await db.delete(configuracion).where(eq(configuracion.clave, "prompt_base"));
+  return c.json({ ok: true });
+});
+
+/* ───────────── Configuración: conexiones (cuentas de Zernio) ───────────── */
+
+const MODOS = ["opticas", "abierto"] as const;
+
+/** Cuentas conectadas a Zernio y si Consultin las atiende. */
+crm.get("/conexiones", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const guardadas = await db.select().from(conexiones);
+  let cuentas: CuentaZernio[] = [];
+  let error: string | null = null;
+  if (c.env.ZERNIO_API_KEY) {
+    try { cuentas = await listarCuentas(c.env.ZERNIO_API_KEY); } catch (e) { error = String((e as Error).message); }
+  } else error = "Falta ZERNIO_API_KEY";
+  const porId = new Map(guardadas.map((g) => [g.cuentaId, g]));
+  const lista = cuentas.map((cu) => ({ ...cu, conexion: porId.get(cu.id) ?? null }));
+  // Conexiones guardadas cuya cuenta ya no está en Zernio
+  for (const g of guardadas) if (!cuentas.some((cu) => cu.id === g.cuentaId)) {
+    lista.push({ id: g.cuentaId, plataforma: g.plataforma, usuario: g.nombre, nombre: null, foto: null, activa: false, necesitaReconexion: true, conexion: g });
+  }
+  return c.json({ cuentas: lista, error });
+});
+
+/** Dar de alta (o actualizar) una cuenta para que la atienda Consultin. */
+crm.put("/conexiones/:cuentaId", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const body = z.object({
+    plataforma: z.string(), nombre: z.string(),
+    modo: z.enum(MODOS), activa: z.boolean(),
+    prompt: z.string().trim().max(20000).nullable().transform((p) => (p ? p : null)),
+  }).parse(await c.req.json());
+  const cuentaId = c.req.param("cuentaId");
+  const [row] = await db.insert(conexiones).values({ cuentaId, ...body })
+    .onConflictDoUpdate({ target: conexiones.cuentaId, set: body }).returning();
+  return c.json(row);
+});
+
+/** Quitar la conexión: Consultin deja de atender esa cuenta. No desconecta nada en Zernio. */
+crm.delete("/conexiones/:cuentaId", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  await db.delete(conexiones).where(eq(conexiones.cuentaId, c.req.param("cuentaId")));
+  return c.json({ ok: true });
+});
+
+/** Enlace para conectar una cuenta nueva (Instagram, WhatsApp, Messenger) en Zernio. */
+crm.get("/conexiones/conectar/:plataforma", async (c) => {
+  const plataforma = c.req.param("plataforma");
+  if (!["instagram", "whatsapp", "facebook"].includes(plataforma)) return c.json({ error: "Plataforma no soportada" }, 400);
+  if (!c.env.ZERNIO_API_KEY) return c.json({ error: "Falta ZERNIO_API_KEY" }, 500);
+  const volverA = c.env.PANEL_URL ?? c.req.header("origin") ?? "https://zernio.com";
+  return c.json({ url: await urlConectar(c.env.ZERNIO_API_KEY, plataforma, volverA) });
 });

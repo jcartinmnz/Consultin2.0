@@ -49,8 +49,11 @@ describe("autenticación por clave", () => {
 
 describe("webhook de Zernio", () => {
   const body = JSON.stringify({
-    event: "message.received",
-    data: { conversationId: "c1", from: "+506 8888-0001", text: "hola", messageId: "m1" },
+    id: "evt-1", event: "message.received",
+    message: { id: "m1", conversationId: "c1", platform: "whatsapp", direction: "incoming", text: "hola",
+      sender: { id: "50688880001", phoneNumber: "+50688880001" } },
+    account: { id: "acc1", accountId: "acc1", platform: "whatsapp", username: "topex" },
+    conversation: { id: "c1", platformConversationId: "p1", status: "active" },
   });
   const req = (firma?: string) => new Request("https://x/webhooks/zernio", {
     method: "POST", body, headers: firma ? { "x-zernio-signature": firma } : {},

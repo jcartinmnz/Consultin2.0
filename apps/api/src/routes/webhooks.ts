@@ -11,6 +11,9 @@ export const webhooks = new Hono<AppBindings>();
  * Si el volumen crece: mover a Cloudflare Queues.
  */
 webhooks.post("/zernio", async (c) => {
+  // Sin esto, con CHANNEL=dev el webhook usaría el canal de desarrollo, que acepta
+  // cualquier teléfono sin firma: cualquiera podría suplantar a una óptica.
+  if (c.env.CHANNEL !== "zernio") return c.json({ error: "Webhook de Zernio inactivo (CHANNEL != zernio)" }, 404);
   const deps = buildDeps(c.env);
   let mensajes;
   try {

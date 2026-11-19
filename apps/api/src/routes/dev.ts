@@ -14,10 +14,11 @@ export const dev = new Hono<AppBindings>();
  *   curl -X POST localhost:8787/dev/chat -H 'content-type: application/json' \
  *        -H "authorization: Bearer $ADMIN_API_KEY" \
  *        -d '{"telefono":"50688880001","texto":"cuánto sale un progresivo 1.67 con AR?"}'
- * Solo disponible con CHANNEL=dev. Protegido con ADMIN_API_KEY (ver index.ts).
+ * Funciona con cualquier CHANNEL (usa su propio canal "dev"); se apaga con SIMULADOR=off.
+ * Protegido con ADMIN_API_KEY (ver index.ts).
  */
 dev.use("*", async (c, next) => {
-  if (c.env.CHANNEL !== "dev") return c.json({ error: "Solo disponible con CHANNEL=dev" }, 404);
+  if (c.env.SIMULADOR === "off") return c.json({ error: "Simulador apagado (SIMULADOR=off)" }, 404);
   await next();
 });
 

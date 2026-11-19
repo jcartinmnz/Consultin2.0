@@ -7,7 +7,8 @@ export function getChannel(env: Env): ChannelAdapter {
   if (env.CHANNEL === "zernio") {
     if (!env.ZERNIO_API_KEY) throw new Error("CHANNEL=zernio pero falta ZERNIO_API_KEY");
     if (!env.ZERNIO_WEBHOOK_SECRET) throw new Error("CHANNEL=zernio pero falta ZERNIO_WEBHOOK_SECRET");
-    return new ZernioChannel(env.ZERNIO_API_KEY, env.ZERNIO_WEBHOOK_SECRET);
+    const cuentas = (env.ZERNIO_ACCOUNT_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    return new ZernioChannel(env.ZERNIO_API_KEY, env.ZERNIO_WEBHOOK_SECRET, cuentas);
   }
   return new DevChannel();
 }

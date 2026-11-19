@@ -2,5 +2,5 @@
 DATABASE_URL="postgresql://user:pass@ep-xxxx.us-east-2.aws.neon.tech/consultin?sslmode=require"
 ANTHROPIC_API_KEY="sk-ant-..."
 ZERNIO_API_KEY="sk_..."
-ZERNIO_WEBHOOK_SECRET="..."
+ZERNIO_WEBHOOK_SECRET="..."   # lo generamos nosotros (openssl rand -hex 32) y se registra en el webhook de Zernio
 ADMIN_API_KEY="cambiar-esto"

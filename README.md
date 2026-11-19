@@ -46,10 +46,23 @@ Cambiar `PRICES_SOURCE = "neon"` en `apps/api/wrangler.toml`.
 5. Llenar `src/sources/orders/estados.ts` con los códigos reales.
 
 ### 3. WhatsApp → Zernio
-1. Conectar el número de Topex en Zernio (Embedded Signup, modo Cloud API).
-2. Revisar los 3 `TODO` de `src/channels/zernio.ts` contra la documentación de Zernio.
-3. Configurar el webhook de Zernio a `https://<worker>/webhooks/zernio`.
-4. `wrangler secret put ZERNIO_API_KEY` y `ZERNIO_WEBHOOK_SECRET` (obligatorio: sin él el worker no arranca en modo zernio), luego `CHANNEL = "zernio"`.
+El adaptador (`src/channels/zernio.ts`) ya sigue el formato real de Zernio: evento `message.received`
+firmado con `X-Zernio-Signature` (HMAC-SHA256 hex del cuerpo) y respuesta con
+`POST /v1/inbox/conversations/{id}/messages` `{ accountId, message }`. Solo procesa texto entrante de WhatsApp
+de las cuentas en `ZERNIO_ACCOUNT_IDS` (otras cuentas del mismo Zernio, como Instagram, se ignoran).
+
+1. Secrets: `wrangler secret put ZERNIO_API_KEY` y `ZERNIO_WEBHOOK_SECRET` (lo generamos nosotros; Zernio firma con él).
+2. En `wrangler.toml`: `CHANNEL = "zernio"` y `ZERNIO_ACCOUNT_IDS = "<accountId de WhatsApp>"`.
+3. Webhook en Zernio: `POST /v1/webhooks/settings` con `url=https://<worker>/webhooks/zernio`,
+   `events=["message.received"]`, el mismo `secret` y `accountIds` = la cuenta de WhatsApp.
+4. **Hoy**: apunta al sandbox compartido de Zernio (`GET /v1/phone-numbers` → `sandbox`), gratis, 1 teléfono de prueba,
+   7 días. Activar el teléfono: `POST /v1/whatsapp/sandbox/sessions {"phone":"+506..."}` y responder el WhatsApp que llega.
+   Ese teléfono debe estar registrado como contacto de una óptica (panel → Ópticas) para que el agente lo identifique.
+5. **Producción**: conectar el número de Topex en Zernio, poner su `accountId` en `ZERNIO_ACCOUNT_IDS`
+   y en el `accountIds` del webhook (`PATCH /v1/webhooks/settings`).
+
+El simulador del panel sigue funcionando con `CHANNEL=zernio` (usa su propio canal `dev`; `SIMULADOR=off` lo apaga).
+El webhook solo se activa con `CHANNEL=zernio`.
 
 ## Demo en vivo
 

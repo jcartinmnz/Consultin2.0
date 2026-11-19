@@ -20,7 +20,7 @@ El agente, las rutas y el CRM SOLO dependen de interfaces. Cada dato externo tie
 |---|---|---|---|---|
 | Precios | `PriceSource` | `prices/mock.ts` (JSON) | `prices/neon.ts` (tabla `productos`) | `PRICES_SOURCE` |
 | Órdenes | `OrderSource` | `orders/mock.ts` (JSON) | `orders/lensware.ts` (vista MySQL) | `ORDERS_SOURCE` |
-| Canal | `ChannelAdapter` | `channels/dev.ts` (curl) | `channels/zernio.ts` | `CHANNEL` |
+| Canal | `ChannelAdapter` | `channels/dev.ts` (curl / simulador) | `channels/zernio.ts` | `CHANNEL` (+ `ZERNIO_ACCOUNT_IDS`) |
 
 Para conectar un dato real: implementar la interfaz, registrarla en `sources/index.ts` o `channels/index.ts`, cambiar la variable en `wrangler.toml`. **No tocar el agente.**
 
@@ -64,7 +64,8 @@ Teléfonos demo: `50688880001` (OPT001, órdenes 48213/48214/48190) y `506888800
 - [ ] `sources/orders/estados.ts`: tabla real de códigos de estado de LensWare.
 - [ ] `sources/orders/lensware.ts`: el lab crea la vista `v_consultin_ordenes` con las columnas documentadas en el archivo.
 - [ ] Lista de precios real → `scripts/import-precios.ts` (ajustar `MAPEO` al Excel de Topex).
-- [ ] `channels/zernio.ts`: confirmar header de firma, evento de mensaje entrante y endpoint de respuesta (3 TODO).
+- [x] `channels/zernio.ts`: formato confirmado contra la OpenAPI de Zernio (firma, `message.received`, respuesta).
+- [ ] Conectar el número de WhatsApp de Topex en Zernio (hoy se usa el sandbox compartido) y poner su `accountId` en `ZERNIO_ACCOUNT_IDS` y en el webhook.
 - [ ] Definir si el loop del agente corre aquí (default) o en Forja.
 
 ## Forja

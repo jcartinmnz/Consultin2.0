@@ -7,7 +7,11 @@ compatibility_flags = ["nodejs_compat"]
 # mock = datos de prueba en src/data | live = fuentes reales
 PRICES_SOURCE = "mock"   # mock | neon
 ORDERS_SOURCE = "mock"   # mock | lensware
-CHANNEL = "dev"          # dev | zernio
+CHANNEL = "zernio"       # dev | zernio
+SIMULADOR = "on"         # simulador del panel (/dev/*): on | off
+# Cuentas de Zernio que atiende el agente (coma). Hoy: sandbox compartido de WhatsApp de Zernio.
+# Cuando se conecte el número de Topex, reemplazar por su accountId (GET /v1/accounts).
+ZERNIO_ACCOUNT_IDS = "6a180a034c7f364ffded3c9c"
 ANTHROPIC_MODEL = "claude-sonnet-5-5"
 LAB_NAME = "Laboratorio Óptico Topex"
 

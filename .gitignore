@@ -4,3 +4,8 @@ dist
 .dev.vars
 .env
 *.log
+
+# Listas de precios del cliente: el repo es público, no se suben
+*precios*.csv
+*precios*.xlsx
+lista-precios*

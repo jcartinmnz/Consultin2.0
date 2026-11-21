@@ -24,16 +24,18 @@ export interface ToolContext {
 export const TOOLS: Anthropic.Messages.Tool[] = [
   {
     name: "buscar_precio",
-    description: "Busca lentes en la lista oficial de precios del laboratorio. Usar para cualquier pregunta de precio o disponibilidad de un tipo de lente. Devuelve hasta 5 coincidencias ordenadas por relevancia.",
+    description: "Busca en la lista oficial de precios del laboratorio (lentes por familia y diseño: Shamir, Image, talla convencional, terminados, Image MYO; y servicios de laboratorio como montajes, antirreflejos, teñidos y reparaciones). Usar para cualquier pregunta de precio o disponibilidad. Precios en colones, por par salvo que `unidad` diga otra cosa. Devuelve hasta 8 coincidencias, de la más parecida a la menos; a igual relevancia, la más barata primero.",
     input_schema: {
       type: "object",
       properties: {
-        consulta: { type: "string", description: "Lo que pidió la óptica, en sus palabras. Ej: 'progresivo 1.67 con antirreflejo'" },
-        tipo: { type: "string", enum: ["monofocal", "bifocal", "progresivo", "ocupacional"] },
-        material: { type: "string", description: "CR-39, policarbonato, alto indice, trivex" },
-        indice: { type: "number", description: "Índice de refracción: 1.50, 1.56, 1.59, 1.67, 1.74" },
-        tratamiento: { type: "string", description: "AR, blue, fotocromatico" },
-        esfera: { type: "number", description: "Esfera más alta en valor absoluto de la receta, con signo" },
+        consulta: { type: "string", description: "Lo que pidió la óptica, en sus palabras. Ej: 'progresivo Autograph 1.67 transitions gris', 'montaje al aire'" },
+        tipo: { type: "string", enum: ["monofocal", "bifocal", "progresivo", "ocupacional", "antifatiga", "myo", "servicio"], description: "monofocal = visión sencilla; ocupacional = oficina/computadora; antifatiga = relax; myo = Image MYO; servicio = montajes, capas AR, teñidos, reparaciones, urgencias" },
+        marca: { type: "string", description: "Marca o familia si la óptica la menciona: Shamir, Image, Younger, Futurex, Nupolar, Vision Ease…" },
+        material: { type: "string", description: "CR39, policarbonato, Trilogy/Trivex, 1.56, Futurex 1.57, 1.60, 1.67, 1.74" },
+        indice: { type: "number", description: "Índice de refracción: 1.50 (CR39), 1.53 (Trilogy), 1.56, 1.57, 1.59 (policarbonato), 1.60, 1.67, 1.74" },
+        tratamiento: { type: "string", description: "Claro, Transitions Gen 8 / Gen S / Xtractive / Signature VII / Vantage, Drivewear, Nupolar polarizado, fotocromático (Photo, Neochromes), Blue Zero / Blue Protect (luz azul), antireflejo" },
+        color: { type: "string", description: "Gris, café, verde, sapphire, amethyst, emerald, amber, ruby…" },
+        esfera: { type: "number", description: "Esfera más alta en valor absoluto de la receta, con signo (filtra productos con rango, como los terminados)" },
         cilindro: { type: "number", description: "Cilindro (negativo)" },
       },
       required: ["consulta"],
@@ -72,8 +74,8 @@ const SIN_IDENTIDAD = { ok: false, data: { error: "No disponible: quien escribe 
 /* ───────────── Ejecución ───────────── */
 
 const precioInput = z.object({
-  consulta: z.string(), tipo: z.string().optional(), material: z.string().optional(),
-  indice: z.number().optional(), tratamiento: z.string().optional(),
+  consulta: z.string(), tipo: z.string().optional(), marca: z.string().optional(), material: z.string().optional(),
+  indice: z.number().optional(), tratamiento: z.string().optional(), color: z.string().optional(),
   esfera: z.number().optional(), cilindro: z.number().optional(),
 });
 const ordenInput = z.object({ numero_orden: z.string().optional() });
@@ -89,8 +91,10 @@ export async function ejecutarTool(name: string, input: unknown, ctx: ToolContex
       // Defensa en profundidad: aunque el modelo invente la llamada, sin identidad no hay datos.
       if (!ctx.optica) return SIN_IDENTIDAD;
       const q = precioInput.parse(input);
-      const resultados = await ctx.prices.buscar(q, 5);
-      return { ok: true, data: resultados.length ? { resultados } : { resultados: [], nota: "Sin coincidencias en la lista de precios." } };
+      const resultados = await ctx.prices.buscar(q, 8);
+      return { ok: true, data: resultados.length
+        ? { resultados, nota: "Precios en colones por par (ver `unidad`). Si hay varias opciones parecidas, preguntá lo mínimo para elegir. Si un resultado trae `aviso`, decíselo a la óptica." }
+        : { resultados: [], nota: "Sin coincidencias en la lista de precios. Probá con menos filtros o una consulta más general antes de decir que no existe." } };
     }
 
     case "estado_orden": {

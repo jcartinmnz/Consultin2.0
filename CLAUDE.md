@@ -37,7 +37,7 @@ Para conectar un dato real: implementar la interfaz, registrarla en `sources/ind
 6. Enviar por el canal y, solo si salió, guardar la respuesta y registrar eventos. Si el envío falla: caso con el texto que no salió.
 
 ## Reglas que NO se rompen
-- Precios, estados y fechas **solo** salen de herramientas. El prompt lo exige y el código nunca deja que el modelo los genere.
+- Precios, estados y fechas **solo** salen de herramientas. El prompt lo exige y el código nunca deja que el modelo los genere. La lista de precios vive en la tabla `productos` y se consulta con `buscar_precio`; nunca se inyecta en el prompt.
 - Una óptica **solo** ve sus órdenes: `estado_orden` compara `codigoCliente` contra la óptica identificada por teléfono. La identidad nunca viene del modelo, del texto ni del nombre de perfil (un usuario de Instagram puede llamarse como una óptica).
 - Las reglas de seguridad del prompt viven en el código (`REGLAS_FIJAS`), no en el prompt editable.
 - Nunca exponer recetas, nombres de pacientes ni datos clínicos (Ley 8968). La vista de LensWare no debe incluirlos.
@@ -68,7 +68,7 @@ Teléfonos demo: `50688880001` (OPT001, órdenes 48213/48214/48190) y `506888800
 ## Pendientes que dependen de Topex / proveedores (marcados con TODO en el código)
 - [ ] `sources/orders/estados.ts`: tabla real de códigos de estado de LensWare.
 - [ ] `sources/orders/lensware.ts`: el lab crea la vista `v_consultin_ordenes` con las columnas documentadas en el archivo.
-- [ ] Lista de precios real → `scripts/import-precios.ts` (ajustar `MAPEO` al Excel de Topex).
+- [x] Lista de precios real cargada en Neon (514 productos, `PRICES_SOURCE = "neon"`). Se actualiza con `scripts/import-precios.ts <csv> --reemplazar`. **El repo es público: el CSV con precios nunca se sube** (`.gitignore`); lo guarda Expertia.
 - [x] `channels/zernio.ts`: formato confirmado contra la OpenAPI de Zernio (firma, `message.received`, respuesta).
 - [ ] Conectar el número de WhatsApp de Topex en Zernio (hoy se usa el sandbox compartido) y poner su `accountId` en `ZERNIO_ACCOUNT_IDS` y en el webhook.
 - [ ] Definir si el loop del agente corre aquí (default) o en Forja.

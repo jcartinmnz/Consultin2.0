@@ -29,9 +29,21 @@ export const contactos = pgTable("contactos", {
 export const productos = pgTable("productos", {
   id: uuid("id").primaryKey().defaultRandom(),
   sku: text("sku").notNull().unique(),
+  /** Código del laboratorio, si la lista lo trae (terminados, MYO) */
+  codigo: text("codigo"),
+  familia: text("familia"),               // Shamir | Image | Convencional | Terminado | Servicios
   nombre: text("nombre").notNull(),
-  tipo: text("tipo").notNull(),           // monofocal | bifocal | progresivo | ocupacional
-  material: text("material").notNull(),   // CR-39 | policarbonato | alto índice | trivex
+  diseno: text("diseno"),                 // "Shamir Autograph III", "Progresivo Image Mobile"…
+  tipo: text("tipo").notNull(),           // monofocal | bifocal | progresivo | ocupacional | antifatiga | myo | servicio
+  nivel: text("nivel"),                   // Very Best | Best | Very Good | Good
+  uso: text("uso"),
+  material: text("material"),             // CR39 | Policarbonato | Trilogy | 1.56 | Futurex 1.57 | 1.60 | 1.67 | 1.74 (null en servicios)
+  color: text("color"),
+  /** Observaciones para la óptica: altura de pupila mínima, rango, protección… */
+  notas: text("notas"),
+  /** true = la lista marca el precio como "CONSULTAR": el agente lo da como referencia a confirmar */
+  consultar: boolean("consultar").notNull().default(false),
+  unidad: text("unidad").notNull().default("par"),
   indice: numeric("indice", { precision: 4, scale: 2 }),
   tratamiento: text("tratamiento"),       // AR | blue | fotocromático | ...
   esferaMin: numeric("esfera_min", { precision: 5, scale: 2 }),

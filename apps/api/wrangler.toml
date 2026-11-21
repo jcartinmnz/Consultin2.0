@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 # mock = datos de prueba en src/data | live = fuentes reales
-PRICES_SOURCE = "mock"   # mock | neon
+PRICES_SOURCE = "neon"   # mock | neon (lista real cargada con scripts/import-precios.ts)
 ORDERS_SOURCE = "mock"   # mock | lensware
 CHANNEL = "zernio"       # dev | zernio
 SIMULADOR = "off"        # /dev/chat para pruebas con curl: on | off

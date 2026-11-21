@@ -6,7 +6,7 @@ export class MockPriceSource implements PriceSource {
   readonly nombre = "mock";
   private rows = data as ProductoRow[];
 
-  async buscar(q: BusquedaPrecio, limite = 5) {
+  async buscar(q: BusquedaPrecio, limite = 8) {
     return ranking(this.rows, q, limite);
   }
 }

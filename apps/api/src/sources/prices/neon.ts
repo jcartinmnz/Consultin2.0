@@ -6,7 +6,7 @@ import { ranking, type ProductoRow } from "./scoring";
 
 /**
  * Lee la lista de precios importada en Neon (tabla `productos`).
- * Con ~1,400–2,000 SKUs es más simple y exacto traer los candidatos filtrados por tipo
+ * Con ~500–2,000 productos es más simple y exacto traer los candidatos filtrados por tipo
  * y puntuar en memoria. Si crece mucho: agregar pg_trgm o embeddings (pgvector) aquí,
  * sin tocar al agente.
  */
@@ -14,7 +14,7 @@ export class NeonPriceSource implements PriceSource {
   readonly nombre = "neon";
   constructor(private db: Db) {}
 
-  async buscar(q: BusquedaPrecio, limite = 5) {
+  async buscar(q: BusquedaPrecio, limite = 8) {
     const filtros = [eq(productos.activo, true)];
     if (q.tipo) filtros.push(eq(productos.tipo, q.tipo.toLowerCase()));
 
@@ -25,6 +25,8 @@ export class NeonPriceSource implements PriceSource {
       indice: num(r.indice), tratamiento: r.tratamiento,
       esferaMin: num(r.esferaMin), esferaMax: num(r.esferaMax), cilindroMax: num(r.cilindroMax),
       precio: Number(r.precio), moneda: r.moneda, alias: r.alias,
+      familia: r.familia, diseno: r.diseno, nivel: r.nivel, uso: r.uso, color: r.color,
+      notas: r.notas, consultar: r.consultar, unidad: r.unidad,
     }));
     return ranking(candidatos, q, limite);
   }

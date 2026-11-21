@@ -29,11 +29,13 @@ cp apps/web/.env.example apps/web/.env && pnpm --filter web dev   # clave = ADMI
 
 ## Pasar de mock a datos reales
 
-### 1. Lista de precios → Neon
+### 1. Lista de precios → Neon (hecho)
+La lista se normaliza a un CSV con una fila por producto y se carga en la tabla `productos`:
 ```bash
-DATABASE_URL=... pnpm --filter api exec tsx scripts/import-precios.ts ./precios-topex.csv
+DATABASE_URL=... pnpm --filter api exec tsx scripts/import-precios.ts ./lista-precios-topex.csv --reemplazar
 ```
-Cambiar `PRICES_SOURCE = "neon"` en `apps/api/wrangler.toml`.
+Columnas y reglas en `scripts/import-precios.ts`. `--reemplazar` desactiva lo que ya no viene en el archivo.
+El agente la consulta con `buscar_precio` (no va en el prompt). **El repo es público: el CSV no se sube a git.**
 
 ### 2. LensWare → Hyperdrive
 1. Topex crea el usuario de solo lectura y la vista `v_consultin_ordenes` (SQL en `src/sources/orders/lensware.ts`).

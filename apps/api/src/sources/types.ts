@@ -7,22 +7,32 @@
 export interface ProductoCotizado {
   sku: string;
   nombre: string;
+  familia: string | null;   // Shamir | Image | Convencional | Terminado | Servicios
+  diseno: string | null;
   tipo: string;
-  material: string;
+  material: string | null;
   indice: number | null;
   tratamiento: string | null;
+  color: string | null;
   precio: number;
   moneda: string;
-  rango: string | null; // "Esf -8.00 a +6.00 / Cil hasta -4.00"
+  unidad: string;           // "par" casi siempre
+  rango: string | null;     // "Esf -4.00 a +4.00 / Cil hasta -2.00"
+  notas: string | null;     // altura de pupila mínima, protección, adicionales…
+  consultar?: boolean;      // la lista lo marca "CONSULTAR"
+  aviso?: string;
 }
 
 export interface BusquedaPrecio {
   /** Texto libre tal como lo escribió la óptica */
   consulta: string;
   tipo?: string;
+  /** Marca o familia: Shamir, Image, Younger, Futurex… */
+  marca?: string;
   material?: string;
   indice?: number;
   tratamiento?: string;
+  color?: string;
   esfera?: number;
   cilindro?: number;
 }

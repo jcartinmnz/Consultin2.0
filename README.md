@@ -54,14 +54,14 @@ firmado con `X-Zernio-Signature` (HMAC-SHA256 hex del cuerpo) y respuesta con
 de las cuentas en `ZERNIO_ACCOUNT_IDS` (otras cuentas del mismo Zernio, como Instagram, se ignoran).
 
 1. Secrets: `wrangler secret put ZERNIO_API_KEY` y `ZERNIO_WEBHOOK_SECRET` (lo generamos nosotros; Zernio firma con él).
-2. En `wrangler.toml`: `CHANNEL = "zernio"` y `ZERNIO_ACCOUNT_IDS = "<accountId de WhatsApp>"`.
+2. En `wrangler.toml`: `CHANNEL = "zernio"`. Las cuentas atendidas se eligen en panel → Ajustes → Conexiones.
 3. Webhook en Zernio: `POST /v1/webhooks/settings` con `url=https://<worker>/webhooks/zernio`,
    `events=["message.received"]`, el mismo `secret` y `accountIds` = la cuenta de WhatsApp.
 4. **Hoy**: apunta al sandbox compartido de Zernio (`GET /v1/phone-numbers` → `sandbox`), gratis, 1 teléfono de prueba,
    7 días. Activar el teléfono: `POST /v1/whatsapp/sandbox/sessions {"phone":"+506..."}` y responder el WhatsApp que llega.
    Ese teléfono debe estar registrado como contacto de una óptica (panel → Ópticas) para que el agente lo identifique.
-5. **Producción**: conectar el número de Topex en Zernio, poner su `accountId` en `ZERNIO_ACCOUNT_IDS`
-   y en el `accountIds` del webhook (`PATCH /v1/webhooks/settings`).
+5. **Producción (hecho)**: el número de Topex +506 4600 9765 está conectado en Zernio y dado de alta en
+   panel → Ajustes → Conexiones (modo solo ópticas). Qué cuentas se atienden se decide ahí, no en variables.
 
 El simulador del panel sigue funcionando con `CHANNEL=zernio` (usa su propio canal `dev`; `SIMULADOR=off` lo apaga).
 El webhook solo se activa con `CHANNEL=zernio`.

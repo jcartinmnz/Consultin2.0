@@ -5,6 +5,8 @@ import type { AppBindings } from "../env";
 import { getDb } from "../db/client";
 import { casos, clientes, compras, contactos, conversaciones, eventos, opticas } from "../db/schema";
 import { getSources } from "../sources";
+import { normalizarTelefono } from "../lib/telefono";
+import { clienteDeOptica } from "../services/repo";
 
 /** Perfiles de cliente: datos, compras, consultas al agente, órdenes y métricas. Montado en /crm (requiere ADMIN_API_KEY). */
 export const clientesRuta = new Hono<AppBindings>();
@@ -159,4 +161,85 @@ clientesRuta.get("/productos", async (c) => {
   const q = (c.req.query("q") ?? "").trim();
   if (q.length < 2) return c.json([]);
   return c.json(await getSources(c.env, db).prices.buscar({ consulta: q }, 8));
+});
+
+/* ───────────── Alta manual (panel → Agregar cliente) ───────────── */
+
+const texto = (max: number) => z.string().trim().max(max).nullish().transform((v) => v || null);
+const correo = texto(200).refine((v) => !v || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), "Correo inválido");
+
+export const nuevoCliente = z.discriminatedUnion("tipo", [
+  z.object({
+    tipo: z.literal("optica"),
+    nombre: z.string().trim().min(2, "Falta el nombre").max(200),
+    razonSocial: texto(200), codigoSap: texto(40), codigoMac: texto(40), ruta: texto(80), codigoLensware: texto(60),
+    /** Números de WhatsApp que identifican a la óptica (quedan autorizados) */
+    whatsapp: z.array(z.string()).max(20).default([]),
+    telefono: texto(100), email: correo, direccion: texto(500), horario: texto(200), contacto: texto(120), notas: texto(5000),
+    forzar: z.boolean().optional(),
+  }),
+  z.object({
+    tipo: z.literal("persona"),
+    nombre: z.string().trim().min(2, "Falta el nombre").max(200),
+    empresa: texto(200), email: correo, telefono: texto(40), direccion: texto(500), notas: texto(5000),
+    forzar: z.boolean().optional(),
+  }),
+]);
+
+clientesRuta.post("/clientes", async (c) => {
+  const db = getDb(c.env.DATABASE_URL);
+  const body = nuevoCliente.parse(await c.req.json());
+
+  if (body.tipo === "persona") {
+    const telefono = body.telefono ? normalizarTelefono(body.telefono) : null;
+    if (body.telefono && !telefono) return c.json({ error: `Teléfono inválido: "${body.telefono}"` }, 400);
+    if (!body.forzar) {
+      const [dup] = await db.select({ id: clientes.id, nombre: clientes.nombre }).from(clientes)
+        .where(telefono ? eq(clientes.telefono, telefono) : sql`lower(${clientes.nombre}) = lower(${body.nombre})`).limit(1);
+      if (dup) return c.json({ error: `Ya existe un cliente "${dup.nombre}" con ese ${telefono ? "teléfono" : "nombre"}.`, duplicado: dup.id }, 409);
+    }
+    const [row] = await db.insert(clientes).values({
+      tipo: "persona", nombre: body.nombre, empresa: body.empresa, email: body.email, telefono,
+      direccion: body.direccion, notas: body.notas, origen: "panel",
+    }).returning({ id: clientes.id });
+    return c.json({ clienteId: row!.id }, 201);
+  }
+
+  // Óptica: validar todo antes de escribir
+  const numeros: string[] = [];
+  for (const n of body.whatsapp.map((x) => x.trim()).filter(Boolean)) {
+    const t = normalizarTelefono(n);
+    if (!t) return c.json({ error: `Número de WhatsApp inválido: "${n}"` }, 400);
+    if (!numeros.includes(t)) numeros.push(t);
+  }
+  if (numeros.length) {
+    const usados = await db.select({ telefono: contactos.telefono, optica: opticas.nombre }).from(contactos)
+      .innerJoin(opticas, eq(opticas.id, contactos.opticaId)).where(inArray(contactos.telefono, numeros));
+    if (usados.length) return c.json({ error: `Estos números ya pertenecen a otra óptica: ${usados.map((u) => `+${u.telefono} (${u.optica})`).join(", ")}` }, 409);
+  }
+  if (body.codigoLensware) {
+    const [dup] = await db.select({ nombre: opticas.nombre }).from(opticas).where(eq(opticas.codigoLensware, body.codigoLensware));
+    if (dup) return c.json({ error: `El código de LensWare ${body.codigoLensware} ya es de "${dup.nombre}".` }, 409);
+  }
+  if (!body.forzar) {
+    const [dup] = await db.select({ id: opticas.id, nombre: opticas.nombre }).from(opticas)
+      .where(sql`lower(${opticas.nombre}) = lower(${body.nombre})`).limit(1);
+    if (dup) return c.json({ error: `Ya existe una óptica llamada "${dup.nombre}".`, duplicado: dup.id }, 409);
+  }
+
+  const [optica] = await db.insert(opticas).values({
+    nombre: body.nombre, razonSocial: body.razonSocial, codigoSap: body.codigoSap, codigoMac: body.codigoMac,
+    ruta: body.ruta, codigoLensware: body.codigoLensware,
+  }).returning();
+  const clienteId = await clienteDeOptica(db, optica!);
+  const notas = [body.ruta && `Ruta: ${body.ruta}`, body.horario && `Horario: ${body.horario}`, body.contacto && `Contacto: ${body.contacto}`,
+    (body.codigoSap || body.codigoMac) && `Código SAP: ${body.codigoSap ?? "—"} · MAC: ${body.codigoMac ?? "—"}`, body.notas].filter(Boolean).join("\n");
+  await db.update(clientes).set({
+    empresa: body.razonSocial, email: body.email, direccion: body.direccion, origen: "panel",
+    telefono: [...numeros.map((n) => `+${n}`), body.telefono].filter(Boolean).join(" / ") || null, notas: notas || null,
+  }).where(eq(clientes.id, clienteId));
+  if (numeros.length) {
+    await db.insert(contactos).values(numeros.map((telefono) => ({ opticaId: optica!.id, telefono, nombre: body.contacto ?? "WhatsApp" })));
+  }
+  return c.json({ clienteId, opticaId: optica!.id }, 201);
 });

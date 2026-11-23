@@ -149,7 +149,13 @@ export async function asegurarCliente(db: Db, conv: { id: string; clienteId: str
   if (p.optica) {
     const id = await clienteDeOptica(db, p.optica);
     if (id !== clienteId) clienteId = id;
-  } else if (!clienteId) {
+  } else if (!clienteId && p.telefono) {
+    // Persona dada de alta en el panel con este teléfono: la conversación se liga a ese perfil
+    const [existente] = await db.select({ id: clientes.id }).from(clientes)
+      .where(and(eq(clientes.tipo, "persona"), eq(clientes.telefono, p.telefono))).limit(1);
+    if (existente) clienteId = existente.id;
+  }
+  if (!p.optica && !clienteId) {
     const [nuevo] = await db.insert(clientes).values({
       tipo: "persona", nombre: p.nombre || (p.telefono ? `+${p.telefono}` : "Sin nombre"),
       telefono: p.telefono || null, origen: p.plataforma,

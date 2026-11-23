@@ -8,9 +8,10 @@ import { Opticas } from "./pages/Opticas";
 import { Chats } from "./pages/Chats";
 import { Configuracion } from "./pages/Configuracion";
 import { Clientes } from "./pages/Clientes";
+import { AgregarCliente } from "./pages/AgregarCliente";
 
-type Vista = "chats" | "clientes" | "casos" | "dashboard" | "opticas" | "config";
-const VISTAS: Record<Vista, string> = { chats: "Chats", clientes: "Clientes", casos: "Casos", dashboard: "Dashboard", opticas: "Ópticas", config: "Ajustes" };
+type Vista = "chats" | "clientes" | "agregar" | "casos" | "dashboard" | "opticas" | "config";
+const VISTAS: Record<Vista, string> = { chats: "Chats", clientes: "Clientes", agregar: "Agregar cliente", casos: "Casos", dashboard: "Dashboard", opticas: "Ópticas", config: "Ajustes" };
 
 /**
  * Acceso rápido por enlace: https://<panel>/#clave=XXXX guarda la clave y la quita de la URL.
@@ -58,6 +59,7 @@ function App() {
       <main className={`vista-${vista}`}>
         {vista === "chats" && <Chats key={destino?.n} inicial={destino?.id} onAbrirCliente={(id) => ir("clientes", id)} />}
         {vista === "clientes" && <Clientes key={destino?.n} inicial={destino?.id} onAbrirChat={(id) => ir("chats", id)} />}
+        {vista === "agregar" && <AgregarCliente onCreado={(id) => ir("clientes", id)} />}
         {vista === "config" && <Configuracion />}
         {vista === "dashboard" && <Dashboard />}
         {vista === "casos" && <Casos />}

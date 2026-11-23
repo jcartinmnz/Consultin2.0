@@ -75,6 +75,7 @@ https://consultin-web.expertia-cr.workers.dev — entrar con `ADMIN_API_KEY`
   la persona y lo que responde el agente. Interruptor **Agente activo / apagado** por conversación; con el agente apagado
   solo responde el equipo desde el panel. Escalar o abrir un caso también apaga el agente; resolver el caso lo enciende.
 - **Clientes**: perfil de cada óptica y de cada persona que escribe: datos editables, compras (registro manual con buscador de la lista de precios), consultas al agente con lo que se cotizó, órdenes de laboratorio (ópticas) y métricas.
+- **Agregar cliente**: alta manual de ópticas (datos, códigos SAP/MAC/LensWare, ruta y WhatsApp autorizados) o de personas/prospectos. Valida números de Costa Rica, números que ya son de otra óptica, código LensWare repetido y nombres duplicados.
 - **Casos**: lo que el agente pasó a una persona.
 - **Ajustes**:
   - *Mensajes seguidos*: segundos que el agente espera para juntar varios mensajes y responder una sola vez (0 = responde cada uno).

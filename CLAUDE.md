@@ -40,6 +40,8 @@ Para conectar un dato real: implementar la interfaz, registrarla en `sources/ind
 - Tabla `clientes`: una por óptica (`opticaId` único) y una "persona" por conversación sin óptica (Instagram, Messenger, WhatsApp no registrado), creada con el primer mensaje (`repo.asegurarCliente`). `conversaciones.clienteId` las liga.
 - `compras`: registro manual desde el perfil (no hay fuente de ventas real todavía); el total se calcula en el servidor.
 - Consultas = eventos `tool_call` de `buscar_precio`/`estado_orden` con `metadata.resultado` (resumen de lo cotizado, `resumirResultado`).
+- Alta manual: `POST /crm/clientes` (óptica o persona). Una persona con teléfono queda ligada a las conversaciones de WhatsApp de ese número (`asegurarCliente`), pero sigue sin acceso a precios ni órdenes: eso solo lo da ser contacto autorizado de una óptica.
+- Teléfonos: `lib/telefono.ts` (`normalizarTelefono`) valida números de Costa Rica.
 - No guardar datos clínicos en `clientes.notas` (Ley 8968).
 
 ## Reglas que NO se rompen

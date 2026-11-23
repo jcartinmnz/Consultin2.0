@@ -40,6 +40,11 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: Co
     cuentaId: msg.cuentaId, participanteNombre: msg.nombrePerfil,
   });
 
+  // Perfil de cliente (panel → Clientes). No bloquea la atención si falla.
+  await repo.asegurarCliente(db, conv, {
+    optica: ident?.optica ?? null, nombre: msg.nombrePerfil, telefono: msg.telefono || null, plataforma: msg.canal,
+  }).catch((e) => console.error("[cliente]", e));
+
   // 2. Guardar mensaje (idempotente ante reintentos del webhook)
   const nuevo = await repo.guardarMensaje(db, { conversacionId: conv.id, rol: "cliente", contenido: msg.texto, externalId: `${msg.canal}:${msg.mensajeExtId}` });
   if (!nuevo) return;
@@ -118,7 +123,7 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: Co
       },
     });
     for (const tc of r.toolCalls) {
-      await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "tool_call", tool: tc.tool, ok: tc.ok, latenciaMs: tc.latenciaMs, metadata: { input: tc.input } });
+      await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "tool_call", tool: tc.tool, ok: tc.ok, latenciaMs: tc.latenciaMs, metadata: { input: tc.input, resultado: tc.resultado } });
     }
     await repo.registrarEvento(db, { conversacionId: conv.id, tipo: "uso_llm", metadata: r.usage });
     texto = r.texto || MENSAJES.handoff;

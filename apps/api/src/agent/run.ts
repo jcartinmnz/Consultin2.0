@@ -8,7 +8,20 @@ export interface LlmClient {
 
 export interface Turno { rol: "cliente" | "bot" | "agente"; contenido: string }
 
-export interface ToolCallLog { tool: string; ok: boolean; latenciaMs: number; input: unknown }
+export interface ToolCallLog { tool: string; ok: boolean; latenciaMs: number; input: unknown; resultado?: unknown }
+
+/** Resumen corto de lo que devolvió una herramienta, para el perfil del cliente (qué se le cotizó). */
+export function resumirResultado(tool: string, data: any): unknown {
+  if (tool === "buscar_precio") {
+    return (data?.resultados ?? []).slice(0, 5).map((r: any) => ({ sku: r.sku, nombre: r.nombre, precio: r.precio }));
+  }
+  if (tool === "estado_orden") {
+    if (data?.orden) return [{ numero_orden: data.orden.numero_orden, estado: data.orden.estado }];
+    if (data?.ordenes) return data.ordenes.map((o: any) => ({ numero_orden: o.numero_orden, estado: o.estado }));
+    return [];
+  }
+  return undefined;
+}
 
 export interface AgentResult {
   texto: string;
@@ -64,7 +77,7 @@ export async function correrAgente(opts: {
       try {
         const r = await ejecutarTool(b.name, b.input, opts.ctx);
         if (r.escalado) escalado = true;
-        toolCalls.push({ tool: b.name, ok: r.ok, latenciaMs: Date.now() - t0, input: b.input });
+        toolCalls.push({ tool: b.name, ok: r.ok, latenciaMs: Date.now() - t0, input: b.input, resultado: r.ok ? resumirResultado(b.name, r.data) : undefined });
         resultados.push({ type: "tool_result", tool_use_id: b.id, content: JSON.stringify(r.data), is_error: !r.ok });
       } catch (err) {
         toolCalls.push({ tool: b.name, ok: false, latenciaMs: Date.now() - t0, input: b.input });

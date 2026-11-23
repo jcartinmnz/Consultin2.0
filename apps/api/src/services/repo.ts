@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { casos, configuracion, conexiones, contactos, conversaciones, eventos, mensajes, opticas } from "../db/schema";
+import { casos, clientes, configuracion, conexiones, contactos, conversaciones, eventos, mensajes, opticas } from "../db/schema";
 import type { Turno } from "../agent/run";
 
 export async function identificar(db: Db, telefono: string) {
@@ -123,4 +123,39 @@ export async function leerConfig(db: Db, clave: string): Promise<string | null> 
 export async function guardarConfig(db: Db, clave: string, valor: string) {
   await db.insert(configuracion).values({ clave, valor })
     .onConflictDoUpdate({ target: configuracion.clave, set: { valor, updatedAt: new Date() } });
+}
+
+/* ───────────── Clientes ───────────── */
+
+/** Cliente de una óptica (se crea si no existe). */
+export async function clienteDeOptica(db: Db, optica: { id: string; nombre: string }): Promise<string> {
+  const [existente] = await db.select({ id: clientes.id }).from(clientes).where(eq(clientes.opticaId, optica.id));
+  if (existente) return existente.id;
+  const [nuevo] = await db.insert(clientes).values({ tipo: "optica", opticaId: optica.id, nombre: optica.nombre, origen: "whatsapp" })
+    .onConflictDoNothing({ target: clientes.opticaId }).returning({ id: clientes.id });
+  if (nuevo) return nuevo.id;
+  const [carrera] = await db.select({ id: clientes.id }).from(clientes).where(eq(clientes.opticaId, optica.id));
+  return carrera!.id;
+}
+
+/**
+ * Liga la conversación a su perfil de cliente:
+ * - óptica identificada → el cliente de esa óptica (aunque antes fuera "persona");
+ * - sin identidad → un cliente "persona" propio de la conversación, creado con su primer mensaje.
+ */
+export async function asegurarCliente(db: Db, conv: { id: string; clienteId: string | null },
+  p: { optica: { id: string; nombre: string } | null; nombre: string | null; telefono: string | null; plataforma: string }): Promise<string> {
+  let clienteId = conv.clienteId;
+  if (p.optica) {
+    const id = await clienteDeOptica(db, p.optica);
+    if (id !== clienteId) clienteId = id;
+  } else if (!clienteId) {
+    const [nuevo] = await db.insert(clientes).values({
+      tipo: "persona", nombre: p.nombre || (p.telefono ? `+${p.telefono}` : "Sin nombre"),
+      telefono: p.telefono || null, origen: p.plataforma,
+    }).returning({ id: clientes.id });
+    clienteId = nuevo!.id;
+  }
+  if (clienteId !== conv.clienteId) await db.update(conversaciones).set({ clienteId }).where(eq(conversaciones.id, conv.id));
+  return clienteId!;
 }

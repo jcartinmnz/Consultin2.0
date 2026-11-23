@@ -74,6 +74,7 @@ https://consultin-web.expertia-cr.workers.dev — entrar con `ADMIN_API_KEY`
 - **Chats**: todas las conversaciones de las cuentas conectadas (WhatsApp, Instagram, Messenger), con lo que escribe
   la persona y lo que responde el agente. Interruptor **Agente activo / apagado** por conversación; con el agente apagado
   solo responde el equipo desde el panel. Escalar o abrir un caso también apaga el agente; resolver el caso lo enciende.
+- **Clientes**: perfil de cada óptica y de cada persona que escribe: datos editables, compras (registro manual con buscador de la lista de precios), consultas al agente con lo que se cotizó, órdenes de laboratorio (ópticas) y métricas.
 - **Casos**: lo que el agente pasó a una persona.
 - **Ajustes**:
   - *Mensajes seguidos*: segundos que el agente espera para juntar varios mensajes y responder una sola vez (0 = responde cada uno).

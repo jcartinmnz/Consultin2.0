@@ -7,9 +7,10 @@ import { Casos } from "./pages/Casos";
 import { Opticas } from "./pages/Opticas";
 import { Chats } from "./pages/Chats";
 import { Configuracion } from "./pages/Configuracion";
+import { Clientes } from "./pages/Clientes";
 
-type Vista = "chats" | "casos" | "dashboard" | "opticas" | "config";
-const VISTAS: Record<Vista, string> = { chats: "Chats", casos: "Casos", dashboard: "Dashboard", opticas: "Ópticas", config: "Ajustes" };
+type Vista = "chats" | "clientes" | "casos" | "dashboard" | "opticas" | "config";
+const VISTAS: Record<Vista, string> = { chats: "Chats", clientes: "Clientes", casos: "Casos", dashboard: "Dashboard", opticas: "Ópticas", config: "Ajustes" };
 
 /**
  * Acceso rápido por enlace: https://<panel>/#clave=XXXX guarda la clave y la quita de la URL.
@@ -26,6 +27,9 @@ claveDesdeEnlace();
 
 function App() {
   const [vista, setVista] = useState<Vista>("chats");
+  // Saltar de un chat al perfil del cliente y viceversa
+  const [destino, setDestino] = useState<{ id: string; n: number } | null>(null);
+  const ir = (v: Vista, id: string) => { setDestino({ id, n: Date.now() }); setVista(v); };
   const [key, setK] = useState(getKey());
 
   if (!key) {
@@ -46,13 +50,14 @@ function App() {
         <div className="logo">Consultin<span>2.0</span></div>
         <nav>
           {(Object.keys(VISTAS) as Vista[]).map((v) => (
-            <button key={v} className={vista === v ? "on" : ""} onClick={() => setVista(v)}>{VISTAS[v]}</button>
+            <button key={v} className={vista === v ? "on" : ""} onClick={() => { setDestino(null); setVista(v); }}>{VISTAS[v]}</button>
           ))}
         </nav>
         <button className="salir" onClick={() => { setKey(""); setK(""); }}>Salir</button>
       </aside>
       <main className={`vista-${vista}`}>
-        {vista === "chats" && <Chats />}
+        {vista === "chats" && <Chats key={destino?.n} inicial={destino?.id} onAbrirCliente={(id) => ir("clientes", id)} />}
+        {vista === "clientes" && <Clientes key={destino?.n} inicial={destino?.id} onAbrirChat={(id) => ir("chats", id)} />}
         {vista === "config" && <Configuracion />}
         {vista === "dashboard" && <Dashboard />}
         {vista === "casos" && <Casos />}

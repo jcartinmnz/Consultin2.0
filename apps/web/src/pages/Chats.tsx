@@ -4,8 +4,8 @@ import { useApi } from "../useApi";
 import { Formato } from "../Formato";
 
 /** Bandeja de conversaciones reales (WhatsApp, Instagram…): lo que entra y lo que responde el agente. */
-export function Chats() {
-  const [sel, setSel] = useState<string | null>(null);
+export function Chats({ inicial, onAbrirCliente }: { inicial?: string | null; onAbrirCliente: (clienteId: string) => void }) {
+  const [sel, setSel] = useState<string | null>(inicial ?? null);
   const [filtro, setFiltro] = useState<"" | "bot" | "humano">("");
   const lista = useApi<FilaChat[]>("/crm/conversaciones");
   usePolling(lista.recargar, 5000);
@@ -39,13 +39,13 @@ export function Chats() {
       </div>
       <div className="detalle">
         {sel && <button className="volver" onClick={() => setSel(null)}>← Chats</button>}
-        {sel ? <Conversacion id={sel} onCambio={lista.recargar} /> : <p className="vacio">Seleccione una conversación.</p>}
+        {sel ? <Conversacion id={sel} onCambio={lista.recargar} onAbrirCliente={onAbrirCliente} /> : <p className="vacio">Seleccione una conversación.</p>}
       </div>
     </div>
   );
 }
 
-function Conversacion({ id, onCambio }: { id: string; onCambio: () => void }) {
+function Conversacion({ id, onCambio, onAbrirCliente }: { id: string; onCambio: () => void; onAbrirCliente: (clienteId: string) => void }) {
   const { data, recargar } = useApi<DetalleChat>(`/crm/conversaciones/${id}`);
   usePolling(recargar, 4000);
   const [texto, setTexto] = useState("");
@@ -80,7 +80,8 @@ function Conversacion({ id, onCambio }: { id: string; onCambio: () => void }) {
       <header className="top chat-top">
         <div>
           <h2>{nombreChat({ optica: data.optica?.nombre, participanteNombre: cv.participanteNombre, telefono: cv.telefono })}</h2>
-          <small className="vacio">{PLATAFORMAS[cv.plataforma ?? cv.canal] ?? cv.canal}{data.optica ? " · óptica identificada" : ""}</small>
+          <small className="vacio">{PLATAFORMAS[cv.plataforma ?? cv.canal] ?? cv.canal}{data.optica ? " · óptica identificada" : ""}
+            {cv.clienteId && <> · <button className="enlace" onClick={() => onAbrirCliente(cv.clienteId!)}>Ver perfil del cliente</button></>}</small>
         </div>
         <label className={`switch ${activo ? "on" : ""}`} title="Encender o apagar el agente en esta conversación">
           <input type="checkbox" checked={activo} onChange={alternar} disabled={ocupado} />

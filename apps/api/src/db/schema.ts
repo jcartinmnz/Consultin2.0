@@ -14,6 +14,43 @@ export const opticas = pgTable("opticas", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Perfil de cliente (panel → Clientes). Una óptica tiene exactamente un cliente (`opticaId`).
+ * Quien escribe por Instagram/Messenger (o un WhatsApp no registrado en modo abierto) es un cliente
+ * tipo "persona", creado con su primer mensaje. Ley 8968: aquí NO se guardan datos clínicos.
+ */
+export const clientes = pgTable("clientes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tipo: text("tipo").notNull(),                   // optica | persona
+  opticaId: uuid("optica_id").references(() => opticas.id).unique(),
+  nombre: text("nombre").notNull(),
+  empresa: text("empresa"),
+  email: text("email"),
+  telefono: text("telefono"),
+  direccion: text("direccion"),
+  /** Canal por el que llegó (whatsapp | instagram | facebook | panel) */
+  origen: text("origen"),
+  notas: text("notas"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Compras registradas a mano desde el perfil (hasta que haya una fuente de ventas real). */
+export const compras = pgTable("compras", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clienteId: uuid("cliente_id").notNull().references(() => clientes.id),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  /** SKU de la lista de precios, si se eligió de ahí */
+  sku: text("sku"),
+  descripcion: text("descripcion").notNull(),
+  cantidad: integer("cantidad").notNull().default(1),
+  precioUnitario: numeric("precio_unitario", { precision: 12, scale: 2 }).notNull(),
+  total: numeric("total", { precision: 12, scale: 2 }).notNull(),
+  moneda: text("moneda").notNull().default("CRC"),
+  notas: text("notas"),
+  autor: text("autor"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("compras_cliente_idx").on(t.clienteId, t.fecha)]);
+
 export const contactos = pgTable("contactos", {
   id: uuid("id").primaryKey().defaultRandom(),
   opticaId: uuid("optica_id").notNull().references(() => opticas.id),
@@ -75,6 +112,7 @@ export const conversaciones = pgTable("conversaciones", {
   cuentaId: text("cuenta_id"),
   participanteNombre: text("participante_nombre"),
   opticaId: uuid("optica_id").references(() => opticas.id),
+  clienteId: uuid("cliente_id").references(() => clientes.id),
   estado: estadoConversacion("estado").notNull().default("bot"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),

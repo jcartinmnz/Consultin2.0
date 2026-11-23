@@ -6,12 +6,14 @@ import { getDb } from "../db/client";
 import { casos, configuracion, conexiones, contactos, conversaciones, mensajes, notasCaso, opticas } from "../db/schema";
 import { canalDeConversacion } from "../channels";
 import * as repo from "../services/repo";
+import { clientesRuta } from "./clientes";
 import { PROMPT_BASE_DEFAULT, REGLAS_FIJAS } from "../agent/prompt";
 import { ESPERA_DEFAULT_S, ESPERA_MAX_S } from "../services/procesar";
 import { leerEsperaMs } from "./webhooks";
 import { listarCuentas, urlConectar, type CuentaZernio } from "../lib/zernio-api";
 
 export const crm = new Hono<AppBindings>();
+crm.route("/", clientesRuta);
 
 /* ───────────── Casos ───────────── */
 
@@ -102,6 +104,7 @@ crm.post("/opticas", async (c) => {
   const db = getDb(c.env.DATABASE_URL);
   const body = z.object({ nombre: z.string(), codigoLensware: z.string() }).parse(await c.req.json());
   const [row] = await db.insert(opticas).values(body).returning();
+  await repo.clienteDeOptica(db, row!); // cada óptica tiene su perfil de cliente
   return c.json(row, 201);
 });
 

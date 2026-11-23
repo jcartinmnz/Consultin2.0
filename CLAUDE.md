@@ -36,6 +36,12 @@ Para conectar un dato real: implementar la interfaz, registrarla en `sources/ind
 5. Agente (`agent/run.ts`): loop de tool calling, máx. 6 iteraciones. Prompt = instrucciones editables (prompt de la conexión, o `configuracion.prompt_base`, o `PROMPT_BASE_DEFAULT`) + contexto + `REGLAS_FIJAS`.
 6. Enviar por el canal y, solo si salió, guardar la respuesta y registrar eventos. Si el envío falla: caso con el texto que no salió.
 
+## Perfil de cliente (panel → Clientes, `routes/clientes.ts`)
+- Tabla `clientes`: una por óptica (`opticaId` único) y una "persona" por conversación sin óptica (Instagram, Messenger, WhatsApp no registrado), creada con el primer mensaje (`repo.asegurarCliente`). `conversaciones.clienteId` las liga.
+- `compras`: registro manual desde el perfil (no hay fuente de ventas real todavía); el total se calcula en el servidor.
+- Consultas = eventos `tool_call` de `buscar_precio`/`estado_orden` con `metadata.resultado` (resumen de lo cotizado, `resumirResultado`).
+- No guardar datos clínicos en `clientes.notas` (Ley 8968).
+
 ## Reglas que NO se rompen
 - Precios, estados y fechas **solo** salen de herramientas. El prompt lo exige y el código nunca deja que el modelo los genere. La lista de precios vive en la tabla `productos` y se consulta con `buscar_precio`; nunca se inyecta en el prompt.
 - Una óptica **solo** ve sus órdenes: `estado_orden` compara `codigoCliente` contra la óptica identificada por teléfono. La identidad nunca viene del modelo, del texto ni del nombre de perfil (un usuario de Instagram puede llamarse como una óptica).

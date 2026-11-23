@@ -104,6 +104,34 @@ button:disabled { opacity: .5; cursor: default; }
 .switch input:focus-visible + .riel { outline: 2px solid var(--purple); outline-offset: 2px; }
 .switch input:disabled + .riel { opacity: .6; }
 
+/* ───────────── Clientes ───────────── */
+.buscar { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 10px; background: #fff; }
+.plat.optica { background: var(--purple); }
+.detalle-scroll { overflow-y: auto; }
+.pestanas { flex-wrap: wrap; margin-bottom: 14px; }
+.kpis-cliente { grid-template-columns: repeat(5, 1fr); }
+.kpis-cliente .v { font-size: 19px; }
+.fila-enlace { width: 100%; display: flex; justify-content: space-between; gap: 8px; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 9px 2px; text-align: left; font-size: 14px; }
+.fila-enlace small { color: var(--muted); white-space: nowrap; }
+.consulta { border-bottom: 1px solid var(--line); padding: 10px 0; }
+.consulta-cab { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.consulta-cab .hora { margin-left: auto; color: var(--muted); }
+.consulta ul { margin: 6px 0 2px; padding-left: 20px; font-size: 14px; }
+.tag.orden { background: #E8F3FF; color: #1565C0; }
+.tabla-scroll { overflow-x: auto; }
+th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.form-perfil, .form-compra { display: grid; gap: 10px; }
+.form-compra { background: var(--bone); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.campos .ancho { grid-column: 1 / -1; }
+.form-perfil label, .form-compra label { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.form-perfil input, .form-perfil textarea, .form-compra input { padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--carbon); font-weight: 400; }
+.form-perfil textarea { min-height: 90px; resize: vertical; }
+.opciones { display: grid; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+.opciones button { display: flex; justify-content: space-between; gap: 10px; background: #fff; border: 0; border-bottom: 1px solid var(--line); padding: 9px 12px; text-align: left; font-size: 14px; }
+.opciones button:hover { background: var(--soft); }
+.peligro-txt { color: #C0262D; }
+
 /* ───────────── Configuración ───────────── */
 .prompt { width: 100%; min-height: 340px; padding: 12px; border-radius: 10px; border: 1px solid var(--line); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
 .prompt.corto { min-height: 140px; }
@@ -138,6 +166,8 @@ code { background: var(--soft); padding: 1px 5px; border-radius: 4px; }
 
   .kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .kpi.dest { grid-column: span 2; }
+  .kpis-cliente { grid-template-columns: repeat(2, 1fr); }
+  .buscar, .form-perfil input, .form-compra input { font-size: 16px; }
   .kpi { padding: 12px; } .kpi .v { font-size: 20px; }
   .grid2 { grid-template-columns: 1fr; gap: 0; }
   .barras { height: 120px; }

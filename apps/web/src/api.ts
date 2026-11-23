@@ -35,7 +35,7 @@ export interface FilaChat {
   lastMessageAt: string; ultimo: string | null; ultimoRol: Mensaje["rol"] | null; casoAbierto: boolean;
 }
 export interface DetalleChat {
-  conversacion: { id: string; canal: string; plataforma: string | null; estado: FilaChat["estado"]; telefono: string | null; participanteNombre: string | null };
+  conversacion: { id: string; canal: string; plataforma: string | null; estado: FilaChat["estado"]; telefono: string | null; participanteNombre: string | null; clienteId: string | null };
   optica: Optica | null; mensajes: Mensaje[]; caso: Caso | null;
 }
 

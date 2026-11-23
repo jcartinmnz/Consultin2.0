@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 // Repo en memoria: solo lo que procesarMensaje usa
-const estado = { mensajes: [] as any[], casos: [] as any[], eventos: [] as any[], convEstado: "bot" as string };
+const estado = { mensajes: [] as any[], casos: [] as any[], eventos: [] as any[], clientes: [] as any[], convEstado: "bot" as string };
 vi.mock("../src/services/repo", () => ({
   identificar: vi.fn(async () => null),
   upsertConversacion: vi.fn(async () => ({ id: "conv1", estado: "bot" })),
@@ -17,6 +17,7 @@ vi.mock("../src/services/repo", () => ({
     return p.join("\n");
   }),
   estadoConversacion: vi.fn(async () => estado.convEstado),
+  asegurarCliente: vi.fn(async (_db: unknown, _conv: unknown, p: any) => { estado.clientes.push(p); return "cli1"; }),
 }));
 
 const { procesarMensaje } = await import("../src/services/procesar");
@@ -104,5 +105,13 @@ describe("ráfaga de mensajes seguidos", () => {
     expect(create).not.toHaveBeenCalled();
     expect(estado.casos).toHaveLength(1);
     expect(estado.casos[0].motivo).toBe("pide_humano");
+  });
+});
+
+describe("perfil de cliente", () => {
+  it("un DM de Instagram crea/usa un cliente 'persona' con su nombre de perfil", async () => {
+    estado.mensajes = []; estado.clientes = []; estado.convEstado = "bot";
+    await procesarMensaje(deps(vi.fn(async () => {})) as any, { ...dm, mensajeExtId: "pc1" }, { modo: "abierto", prompt: null });
+    expect(estado.clientes[0]).toEqual({ optica: null, nombre: "@cliente", telefono: null, plataforma: "instagram" });
   });
 });

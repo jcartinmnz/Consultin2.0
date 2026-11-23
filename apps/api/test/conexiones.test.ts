@@ -60,3 +60,16 @@ describe("prompt editable", () => {
     expect(p).toContain("Herramientas disponibles: Solo escalar_a_humano.");
   });
 });
+
+describe("resumen de lo que respondió una herramienta (perfil → consultas)", async () => {
+  const { resumirResultado } = await import("../src/agent/run");
+  it("buscar_precio guarda los productos cotizados con su precio", () => {
+    expect(resumirResultado("buscar_precio", { resultados: [{ sku: "A", nombre: "Lente A", precio: 100, notas: "x" }] }))
+      .toEqual([{ sku: "A", nombre: "Lente A", precio: 100 }]);
+  });
+  it("estado_orden guarda número y estado, nunca más datos", () => {
+    expect(resumirResultado("estado_orden", { encontrada: true, orden: { numero_orden: "1", estado: "En tallado", referencia: "R" } }))
+      .toEqual([{ numero_orden: "1", estado: "En tallado" }]);
+    expect(resumirResultado("estado_orden", { encontrada: false })).toEqual([]);
+  });
+});

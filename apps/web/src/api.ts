@@ -26,7 +26,7 @@ export interface Caso {
 }
 export interface Mensaje { id: string; rol: "cliente" | "bot" | "agente"; contenido: string; autor: string | null; createdAt: string }
 export interface Nota { id: string; autor: string; texto: string; createdAt: string }
-export interface Optica { id: string; nombre: string; codigoLensware: string; activa: boolean }
+export interface Optica { id: string; nombre: string; codigoLensware: string | null; codigoSap: string | null; codigoMac: string | null; razonSocial: string | null; ruta: string | null; activa: boolean }
 
 export type Plataforma = "whatsapp" | "instagram" | "facebook" | string;
 export interface FilaChat {

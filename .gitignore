@@ -9,3 +9,7 @@ dist
 *precios*.csv
 *precios*.xlsx
 lista-precios*
+
+# Base de clientes del cliente (teléfonos, correos, nombres): el repo es público, no se sube
+*opticas*.csv
+*.xlsx

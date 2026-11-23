@@ -102,7 +102,9 @@ crm.get("/opticas/:id", async (c) => {
 
 crm.post("/opticas", async (c) => {
   const db = getDb(c.env.DATABASE_URL);
-  const body = z.object({ nombre: z.string(), codigoLensware: z.string() }).parse(await c.req.json());
+  const body = z.object({
+    nombre: z.string().trim().min(1), codigoLensware: z.string().trim().nullable().optional().transform((v) => v || null),
+  }).parse(await c.req.json());
   const [row] = await db.insert(opticas).values(body).returning();
   await repo.clienteDeOptica(db, row!); // cada óptica tiene su perfil de cliente
   return c.json(row, 201);

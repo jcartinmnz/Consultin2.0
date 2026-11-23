@@ -36,6 +36,13 @@
       "when": 1795463529069,
       "tag": "0004_clientes_y_compras",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795469514228,
+      "tag": "0005_opticas_base_topex",
+      "breakpoints": true
     }
   ]
 }

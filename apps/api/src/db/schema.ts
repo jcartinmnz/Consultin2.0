@@ -8,8 +8,18 @@ import {
 export const opticas = pgTable("opticas", {
   id: uuid("id").primaryKey().defaultRandom(),
   nombre: text("nombre").notNull(),
-  /** Código de cliente tal como aparece en LensWare. Llave para filtrar órdenes. */
-  codigoLensware: text("codigo_lensware").notNull().unique(),
+  /**
+   * Código de cliente tal como aparece en LensWare. Llave para filtrar órdenes.
+   * null = todavía no vinculada con LensWare: el agente no da órdenes de esta óptica (las pasa a una persona).
+   */
+  codigoLensware: text("codigo_lensware").unique(),
+  /** Llave de importación (SAP-MAC-nombre): permite volver a importar la base sin duplicar. */
+  clave: text("clave").unique(),
+  codigoSap: text("codigo_sap"),
+  codigoMac: text("codigo_mac"),
+  razonSocial: text("razon_social"),
+  /** Ruta de visita/entrega de Topex (Ruta Larga C1, Heredia, Encomiendas…) */
+  ruta: text("ruta"),
   activa: boolean("activa").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -65,7 +65,8 @@ clientesRuta.get("/clientes/:id", async (c) => {
   // Órdenes de laboratorio (solo ópticas). Hoy salen del mock; con LensWare conectado son las reales.
   let ordenes: unknown[] = [];
   let ordenesError: string | null = null;
-  if (optica) {
+  if (optica && !optica.codigoLensware) ordenesError = "Esta óptica todavía no tiene código de LensWare.";
+  else if (optica?.codigoLensware) {
     try { ordenes = await getSources(c.env, db).orders.recientes(optica.codigoLensware, 10); }
     catch (e) { ordenesError = String((e as Error).message); }
   }

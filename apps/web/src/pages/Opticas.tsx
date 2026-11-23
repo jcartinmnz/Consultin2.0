@@ -8,11 +8,14 @@ interface FichaOptica { optica: Optica; contactos: Contacto[]; casos: Caso[]; co
 export function Opticas() {
   const lista = useApi<Optica[]>("/crm/opticas");
   const [sel, setSel] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const n = (t: string | null | undefined) => (t ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const filtradas = lista.data?.filter((o) => !q || [o.nombre, o.razonSocial, o.codigoSap, o.codigoMac, o.ruta, o.codigoLensware].some((x) => n(x).includes(n(q))));
 
   const crear = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    await api("/crm/opticas", { method: "POST", body: JSON.stringify({ nombre: f.get("nombre"), codigoLensware: f.get("codigo") }) });
+    await api("/crm/opticas", { method: "POST", body: JSON.stringify({ nombre: f.get("nombre"), codigoLensware: f.get("codigo") || null }) });
     e.currentTarget.reset(); lista.recargar();
   };
 
@@ -22,14 +25,17 @@ export function Opticas() {
         <header className="top"><h2>Ópticas</h2></header>
         <form className="mini" onSubmit={crear}>
           <input name="nombre" placeholder="Nombre de la óptica" required />
-          <input name="codigo" placeholder="Código en LensWare" required />
+          <input name="codigo" placeholder="Código en LensWare (opcional)" />
           <button>Agregar</button>
         </form>
-        {lista.data?.map((o) => (
+        <input className="buscar" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Buscar entre ${lista.data?.length ?? 0} ópticas (nombre, SAP, MAC, ruta)`} />
+        {filtradas?.slice(0, 200).map((o) => (
           <button key={o.id} className={`item ${sel === o.id ? "on" : ""}`} onClick={() => setSel(o.id)}>
-            <strong>{o.nombre}</strong><small>{o.codigoLensware}</small>
+            <strong>{o.nombre}</strong>
+            <small>{[o.ruta, o.codigoSap && `SAP ${o.codigoSap}`, o.codigoMac && `MAC ${o.codigoMac}`, o.codigoLensware ? `LensWare ${o.codigoLensware}` : "sin LensWare"].filter(Boolean).join(" · ")}</small>
           </button>
         ))}
+        {(filtradas?.length ?? 0) > 200 && <p className="vacio">Mostrando 200 de {filtradas!.length}. Afine la búsqueda.</p>}
       </div>
       <div className="detalle">
         {sel && <button className="volver" onClick={() => setSel(null)}>← Ópticas</button>}
@@ -56,7 +62,10 @@ function Ficha({ id }: { id: string }) {
 
   return (
     <>
-      <header className="top"><h2>{data.optica.nombre}</h2><span className="tag">{data.optica.codigoLensware}</span></header>
+      <header className="top"><h2>{data.optica.nombre}</h2><span className="tag">{data.optica.codigoLensware ? `LensWare ${data.optica.codigoLensware}` : "Sin código LensWare"}</span></header>
+      {(data.optica.razonSocial || data.optica.codigoSap || data.optica.ruta) && (
+        <p className="vacio">{[data.optica.razonSocial, data.optica.codigoSap && `SAP ${data.optica.codigoSap}`, data.optica.codigoMac && `MAC ${data.optica.codigoMac}`, data.optica.ruta].filter(Boolean).join(" · ")}</p>
+      )}
       <section className="panel">
         <h3>Números autorizados</h3>
         <table><tbody>

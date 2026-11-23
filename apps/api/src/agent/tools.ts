@@ -8,7 +8,7 @@ export const MOTIVOS_ESCALAMIENTO = [
   "reclamo", "garantia", "reproceso", "facturacion", "no_entendido", "numero_no_registrado", "otro",
 ] as const;
 
-export interface OpticaCtx { id: string; nombre: string; codigoLensware: string }
+export interface OpticaCtx { id: string; nombre: string; codigoLensware: string | null }
 
 export interface ToolContext {
   prices: PriceSource;
@@ -100,6 +100,9 @@ export async function ejecutarTool(name: string, input: unknown, ctx: ToolContex
     case "estado_orden": {
       if (!ctx.optica) return SIN_IDENTIDAD;
       const optica = ctx.optica;
+      const codigo = optica.codigoLensware;
+      // Óptica identificada pero todavía sin código de LensWare: no hay forma segura de saber cuáles órdenes son suyas
+      if (!codigo) return { ok: true, data: { encontrada: false, nota: "Esta óptica todavía no está vinculada con el sistema de órdenes. No inventes estados: ofrecé pasar la consulta a una persona del equipo (escalar_a_humano, N2, motivo otro)." } };
       const { numero_orden } = ordenInput.parse(input);
       const vista = (o: EstadoOrden) => {
         const def = traducirEstado(o.estadoCodigo);
@@ -113,12 +116,12 @@ export async function ejecutarTool(name: string, input: unknown, ctx: ToolContex
       if (numero_orden) {
         const o = await ctx.orders.obtener(numero_orden);
         // Seguridad: una óptica solo ve sus órdenes. Mismo mensaje si no existe o es de otro cliente.
-        if (!o || o.codigoCliente !== optica.codigoLensware) {
+        if (!o || o.codigoCliente !== codigo) {
           return { ok: true, data: { encontrada: false, nota: "No se encontró esa orden para esta óptica." } };
         }
         return { ok: true, data: { encontrada: true, orden: vista(o) } };
       }
-      const recientes = await ctx.orders.recientes(optica.codigoLensware, 5);
+      const recientes = await ctx.orders.recientes(codigo, 5);
       return { ok: true, data: { ordenes: recientes.map(vista) } };
     }
 

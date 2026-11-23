@@ -66,3 +66,19 @@ describe("escalar_a_humano", () => {
     expect(c.escalar).toHaveBeenCalledOnce();
   });
 });
+
+describe("óptica identificada pero sin código de LensWare (base importada)", () => {
+  it("estado_orden no devuelve órdenes de nadie y pide escalar", async () => {
+    const r = await ejecutarTool("estado_orden", { numero_orden: "48213" },
+      ctx({ optica: { id: "o9", nombre: "Óptica Real", codigoLensware: null } }));
+    expect((r.data as any).encontrada).toBe(false);
+    expect(JSON.stringify(r.data)).not.toContain("tallado");
+    const r2 = await ejecutarTool("estado_orden", {}, ctx({ optica: { id: "o9", nombre: "Óptica Real", codigoLensware: null } }));
+    expect((r2.data as any).ordenes).toBeUndefined();
+  });
+
+  it("buscar_precio sí funciona (precios no dependen de LensWare)", async () => {
+    const r = await ejecutarTool("buscar_precio", { consulta: "progresivo 1.67" }, ctx({ optica: { id: "o9", nombre: "Óptica Real", codigoLensware: null } }));
+    expect(r.ok).toBe(true);
+  });
+});

@@ -44,7 +44,7 @@ Para conectar un dato real: implementar la interfaz, registrarla en `sources/ind
 
 ## Reglas que NO se rompen
 - Precios, estados y fechas **solo** salen de herramientas. El prompt lo exige y el código nunca deja que el modelo los genere. La lista de precios vive en la tabla `productos` y se consulta con `buscar_precio`; nunca se inyecta en el prompt.
-- Una óptica **solo** ve sus órdenes: `estado_orden` compara `codigoCliente` contra la óptica identificada por teléfono. La identidad nunca viene del modelo, del texto ni del nombre de perfil (un usuario de Instagram puede llamarse como una óptica).
+- Una óptica **solo** ve sus órdenes: `estado_orden` compara `codigoCliente` contra la óptica identificada por teléfono; si la óptica no tiene `codigoLensware`, no devuelve órdenes. La identidad nunca viene del modelo, del texto ni del nombre de perfil (un usuario de Instagram puede llamarse como una óptica).
 - Las reglas de seguridad del prompt viven en el código (`REGLAS_FIJAS`), no en el prompt editable.
 - Nunca exponer recetas, nombres de pacientes ni datos clínicos (Ley 8968). La vista de LensWare no debe incluirlos.
 - Acceso a LensWare **solo lectura** (usuario MySQL con `SELECT` sobre una vista).
@@ -77,7 +77,9 @@ Teléfonos demo: `50688880001` (OPT001, órdenes 48213/48214/48190) y `506888800
 - [x] Lista de precios real cargada en Neon (514 productos, `PRICES_SOURCE = "neon"`). Se actualiza con `scripts/import-precios.ts <csv> --reemplazar`. **El repo es público: el CSV con precios nunca se sube** (`.gitignore`); lo guarda Expertia.
 - [x] `channels/zernio.ts`: formato confirmado contra la OpenAPI de Zernio (firma, `message.received`, respuesta).
 - [x] WhatsApp de Topex +506 4600 9765 conectado en Zernio (cuenta `6b04a0263fd0353f177b0829`) y dado de alta en `conexiones` en modo `opticas`. El webhook de Zernio recibe todas las cuentas; Consultin filtra por `conexiones`.
-- [ ] Registrar las ópticas reales y sus números autorizados (panel → Ópticas). Hasta entonces, un número desconocido recibe "no registrado" y abre un caso.
+- [x] Base de ópticas de Topex importada: 382 ópticas (por ruta, con SAP/MAC/razón social) y 378 números autorizados (`scripts/import-opticas.ts <csv>`; el CSV trae datos personales y **no se sube**).
+- [ ] Confirmar con Topex qué código usa LensWare por óptica (¿SAP, MAC u otro?) y cargarlo en `opticas.codigo_lensware`. Sin código, `estado_orden` no da órdenes y ofrece escalar.
+- [ ] Revisar con Topex los 14 números compartidos entre sucursales (quedaron en la primera) y las 90 ópticas sin WhatsApp.
 - [ ] Definir si el loop del agente corre aquí (default) o en Forja.
 
 ## Forja

@@ -12,7 +12,7 @@ interface Consulta { id: string; tipo: "precio" | "orden"; fecha: string; ok: bo
 interface Orden { numeroOrden: string; estado: string; estacion: string | null; fechaIngreso: string | null; fechaEstimada: string | null; referencia: string | null }
 interface Perfil {
   cliente: { id: string; tipo: "optica" | "persona"; nombre: string; empresa: string | null; email: string | null; telefono: string | null; direccion: string | null; origen: string | null; notas: string | null; createdAt: string };
-  optica: { id: string; nombre: string; codigoLensware: string } | null;
+  optica: { id: string; nombre: string; codigoLensware: string | null; codigoSap: string | null; codigoMac: string | null; ruta: string | null } | null;
   contactos: { id: string; nombre: string | null; telefono: string; autorizado: boolean }[];
   conversaciones: { id: string; plataforma: string; estado: string; lastMessageAt: string; createdAt: string }[];
   consultas: Consulta[]; compras: Compra[];
@@ -91,7 +91,7 @@ function FichaCliente({ id, onCambio, onAbrirChat }: { id: string; onCambio: () 
       <header className="top">
         <div>
           <h2>{cl.nombre}</h2>
-          <small className="vacio">{origenTxt(cl)}{data.optica ? ` · código LensWare ${data.optica.codigoLensware}` : ""} · cliente desde {fecha(cl.createdAt)}</small>
+          <small className="vacio">{origenTxt(cl)}{data.optica ? [data.optica.ruta, data.optica.codigoSap && `SAP ${data.optica.codigoSap}`, data.optica.codigoLensware ? `LensWare ${data.optica.codigoLensware}` : "sin LensWare"].filter(Boolean).map((x) => ` · ${x}`).join("") : ""} · cliente desde {fecha(cl.createdAt)}</small>
         </div>
       </header>
       <div className="tabs pestanas">
@@ -165,7 +165,7 @@ function FichaCliente({ id, onCambio, onAbrirChat }: { id: string; onCambio: () 
       {pestana === "ordenes" && (
         <section className="panel">
           <h3>Órdenes en el laboratorio</h3>
-          <p className="vacio">Datos de prueba hasta que se conecte LensWare.</p>
+          <p className="vacio">{data.optica?.codigoLensware ? "Datos de prueba hasta que se conecte LensWare." : "Se mostrarán cuando LensWare esté conectado y la óptica tenga su código."}</p>
           {data.ordenesError && <p className="error">{data.ordenesError}</p>}
           {data.ordenes.length ? (
             <div className="tabla-scroll"><table>

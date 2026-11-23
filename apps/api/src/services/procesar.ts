@@ -25,8 +25,16 @@ export interface Deps {
 export const ESPERA_DEFAULT_S = 6;
 export const ESPERA_MAX_S = 15;
 
-/** Cómo se atiende una conexión. Sin conexión (dev, Forja) = modo ópticas con el prompt base. */
-export interface ConfigConexion { modo: "opticas" | "abierto"; prompt: string | null }
+/**
+ * Cómo se atiende una conexión. Sin conexión (dev, Forja) = modo ópticas con el prompt base.
+ * Las ópticas identificadas reciben todo en cualquier modo; el modo decide qué pasa con quien NO está registrado:
+ * - opticas: aviso "no registrado" + caso, sin LLM;
+ * - abierto: el agente atiende, solo puede escalar;
+ * - precios: el agente atiende y cotiza, nunca da órdenes.
+ */
+export type ModoConexion = "opticas" | "abierto" | "precios";
+export const MODOS_CONEXION: readonly ModoConexion[] = ["opticas", "abierto", "precios"];
+export interface ConfigConexion { modo: ModoConexion; prompt: string | null }
 
 /** Flujo completo de un mensaje entrante. Ver CLAUDE.md → "Flujo de un mensaje". */
 export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: ConfigConexion = { modo: "opticas", prompt: null }): Promise<void> {
@@ -112,13 +120,15 @@ export async function procesarMensaje(d: Deps, msg: InboundMessage, conexion: Co
       system: systemPrompt({
         instrucciones, lab: env.LAB_NAME, optica: ident?.optica ?? null, contacto: ident?.contacto.nombre ?? null,
         participante: msg.nombrePerfil, plataforma: msg.canal, herramientasCompletas: !!ident, ahora: new Date(),
+        preciosSinIdentidad: !ident && conexion.modo === "precios",
       }),
       historial: turnos,
-      tools: toolsPara(!!ident),
+      tools: toolsPara(!!ident, conexion.modo === "precios"),
       ctx: {
         prices: d.sources.prices,
         orders: d.sources.orders,
         optica: ident?.optica ?? null,
+        preciosSinIdentidad: !ident && conexion.modo === "precios",
         escalar: async (e) => { await repo.crearCaso(db, { conversacionId: conv.id, opticaId: ident?.optica.id ?? null, ...e }); },
       },
     });

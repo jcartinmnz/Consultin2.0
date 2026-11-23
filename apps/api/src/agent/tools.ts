@@ -13,8 +13,10 @@ export interface OpticaCtx { id: string; nombre: string; codigoLensware: string 
 export interface ToolContext {
   prices: PriceSource;
   orders: OrderSource;
-  /** null = remitente no identificado (p. ej. un DM de Instagram): solo puede escalar. */
+  /** null = remitente no identificado (p. ej. un DM de Instagram o un número no registrado). */
   optica: OpticaCtx | null;
+  /** Conexión en modo "precios": un remitente no identificado puede cotizar (nunca ver órdenes). */
+  preciosSinIdentidad?: boolean;
   escalar: (e: { nivel: "N2" | "N3"; motivo: string; resumen: string }) => Promise<void>;
   ahora?: Date;
 }
@@ -65,8 +67,15 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
 ];
 
 /** Herramientas que se ofrecen al modelo: sin óptica identificada, solo escalar. */
-export function toolsPara(identificado: boolean): Anthropic.Messages.Tool[] {
-  return identificado ? TOOLS : TOOLS.filter((t) => t.name === "escalar_a_humano");
+/**
+ * Herramientas que se ofrecen al modelo:
+ * - óptica identificada → todas;
+ * - no identificado con `conPrecios` (conexión en modo "precios") → cotizar y escalar, nunca órdenes;
+ * - no identificado → solo escalar.
+ */
+export function toolsPara(identificado: boolean, conPrecios = false): Anthropic.Messages.Tool[] {
+  if (identificado) return TOOLS;
+  return TOOLS.filter((t) => t.name === "escalar_a_humano" || (conPrecios && t.name === "buscar_precio"));
 }
 
 const SIN_IDENTIDAD = { ok: false, data: { error: "No disponible: quien escribe no es una óptica cliente identificada. Ofrecé pasar la consulta a una persona del equipo." } };
@@ -88,8 +97,9 @@ export interface ToolResult { ok: boolean; data: unknown; escalado?: boolean }
 export async function ejecutarTool(name: string, input: unknown, ctx: ToolContext): Promise<ToolResult> {
   switch (name) {
     case "buscar_precio": {
-      // Defensa en profundidad: aunque el modelo invente la llamada, sin identidad no hay datos.
-      if (!ctx.optica) return SIN_IDENTIDAD;
+      // Defensa en profundidad: aunque el modelo invente la llamada, sin identidad no hay precios,
+      // salvo que la conexión los permita a cualquiera (modo "precios").
+      if (!ctx.optica && !ctx.preciosSinIdentidad) return SIN_IDENTIDAD;
       const q = precioInput.parse(input);
       const resultados = await ctx.prices.buscar(q, 8);
       return { ok: true, data: resultados.length

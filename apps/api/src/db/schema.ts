@@ -171,7 +171,7 @@ export const conexiones = pgTable("conexiones", {
   cuentaId: text("cuenta_id").primaryKey(),       // _id de la cuenta en Zernio
   plataforma: text("plataforma").notNull(),
   nombre: text("nombre").notNull(),               // @usuario o número, para mostrar
-  /** opticas = solo números registrados, todas las herramientas · abierto = cualquiera, solo escalar */
+  /** Qué pasa con quien NO está registrado: opticas = aviso + caso · abierto = agente solo escala · precios = agente cotiza (nunca órdenes) */
   modo: text("modo").notNull().default("opticas"),
   /** Prompt propio de esta conexión. null = usa el prompt base. */
   prompt: text("prompt"),

@@ -82,8 +82,10 @@ https://consultin-web.expertia-cr.workers.dev — entrar con `ADMIN_API_KEY`
   - *Prompt base*: instrucciones del agente, editables. Las reglas de seguridad, la fecha, el canal y quién escribe
     las agrega siempre el código (`agent/prompt.ts` → `REGLAS_FIJAS`) y no se pueden borrar desde el panel.
   - *Conexiones*: cuentas de Zernio que atiende Consultin. Cada una tiene modo y, opcionalmente, prompt propio:
-    - **Solo ópticas**: responde únicamente a teléfonos de WhatsApp registrados en Ópticas, con precios y órdenes.
-    - **Abierto**: responde a cualquiera (p. ej. DMs de Instagram), pero solo puede escalar: nunca precios ni órdenes.
+    Las ópticas registradas siempre reciben precios y sus órdenes. El modo decide qué pasa con los demás:
+    - **Solo ópticas**: los no registrados reciben aviso y pasan a una persona.
+    - **Todos, con precios**: los no registrados cotizan con la lista; nunca ven órdenes. (WhatsApp de Topex)
+    - **Todos, sin precios**: los no registrados solo pueden pasar a una persona. (Instagram de Expertia)
     - "+ Instagram / WhatsApp / Messenger" abre el OAuth de Zernio para conectar una cuenta nueva.
     - Quitar una conexión solo hace que Consultin deje de atenderla; no desconecta nada en Zernio.
 

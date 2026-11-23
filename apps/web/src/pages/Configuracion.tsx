@@ -4,15 +4,16 @@ import { useApi } from "../useApi";
 import { mensajeError } from "./Chats";
 
 interface PromptConfig { prompt: string; personalizado: boolean; porDefecto: string; reglasFijas: string }
-interface ConexionGuardada { cuentaId: string; plataforma: string; nombre: string; modo: "opticas" | "abierto"; prompt: string | null; activa: boolean }
+interface ConexionGuardada { cuentaId: string; plataforma: string; nombre: string; modo: "opticas" | "abierto" | "precios"; prompt: string | null; activa: boolean }
 interface Cuenta {
   id: string; plataforma: string; usuario: string | null; nombre: string | null; foto: string | null;
   activa: boolean; necesitaReconexion: boolean; conexion: ConexionGuardada | null;
 }
 
 const MODOS = {
-  opticas: "Solo ópticas registradas (precios y órdenes)",
-  abierto: "Abierto a cualquiera (sin precios ni órdenes; puede pasar a una persona)",
+  opticas: "Solo ópticas registradas (los demás reciben aviso y pasan a una persona)",
+  precios: "Todos, con precios (no registrados pueden cotizar; órdenes solo ópticas)",
+  abierto: "Todos, sin precios (no registrados solo pueden pasar a una persona)",
 };
 
 export function Configuracion() {
@@ -173,10 +174,10 @@ function FilaConexion({ cuenta: c, onCambio }: { cuenta: Cuenta; onCambio: () =>
       </div>
       {cx && (
         <>
-          <button className="enlace" onClick={() => setAbierta(!abierta)}>{abierta ? "Ocultar ajustes" : `Ajustes · ${cx.modo === "abierto" ? "abierto" : "solo ópticas"}${cx.prompt ? " · prompt propio" : ""}`}</button>
+          <button className="enlace" onClick={() => setAbierta(!abierta)}>{abierta ? "Ocultar ajustes" : `Ajustes · ${{ opticas: "solo ópticas", precios: "todos con precios", abierto: "todos sin precios" }[cx.modo] ?? cx.modo}${cx.prompt ? " · prompt propio" : ""}`}</button>
           {abierta && (
             <div className="cx-ajustes">
-              <label>Quién puede hablar con el agente
+              <label>Si escribe alguien que no es óptica registrada
                 <select value={modo} onChange={(e) => setModo(e.target.value as ConexionGuardada["modo"])}>
                   {Object.entries(MODOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>

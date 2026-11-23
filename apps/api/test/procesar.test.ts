@@ -115,3 +115,14 @@ describe("perfil de cliente", () => {
     expect(estado.clientes[0]).toEqual({ optica: null, nombre: "@cliente", telefono: null, plataforma: "instagram" });
   });
 });
+
+describe("modo 'precios' en el flujo completo", () => {
+  it("un número no registrado pasa por el agente con buscar_precio, sin estado_orden", async () => {
+    estado.mensajes = []; estado.casos = []; estado.convEstado = "bot";
+    const create = vi.fn(async () => ({ stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 }, content: [{ type: "text", text: "Le cotizo." }] }));
+    const wa = { ...dm, canal: "whatsapp", telefono: "50699999999", mensajeExtId: "pp1" };
+    await procesarMensaje(deps(vi.fn(async () => {}), create) as any, wa, { modo: "precios", prompt: null });
+    expect((create.mock.calls[0] as any)[0].tools.map((t: any) => t.name)).toEqual(["buscar_precio", "escalar_a_humano"]);
+    expect(estado.casos.find((c) => c.motivo === "numero_no_registrado")).toBeUndefined();
+  });
+});

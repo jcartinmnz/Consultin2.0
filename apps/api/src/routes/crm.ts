@@ -216,7 +216,7 @@ crm.put("/config/espera", async (c) => {
 
 /* ───────────── Configuración: conexiones (cuentas de Zernio) ───────────── */
 
-const MODOS = ["opticas", "abierto"] as const;
+const MODOS = ["opticas", "abierto", "precios"] as const;
 
 /** Cuentas conectadas a Zernio y si Consultin las atiende. */
 crm.get("/conexiones", async (c) => {

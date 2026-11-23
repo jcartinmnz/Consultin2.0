@@ -49,19 +49,23 @@ export interface PromptCtx {
   /** Nombre o usuario de quien escribe cuando no es una óptica identificada */
   participante?: string | null;
   plataforma?: string | null;
-  /** false = solo escalar_a_humano (remitente no identificado) */
+  /** false = remitente no identificado: solo escalar_a_humano (o también buscar_precio con `preciosSinIdentidad`) */
   herramientasCompletas?: boolean;
+  preciosSinIdentidad?: boolean;
   ahora: Date;
 }
 
 export function systemPrompt(c: PromptCtx): string {
   const fecha = c.ahora.toLocaleString("es-CR", { timeZone: "America/Costa_Rica", dateStyle: "full", timeStyle: "short" });
   const instrucciones = (c.instrucciones?.trim() || PROMPT_BASE_DEFAULT).replaceAll("{lab}", c.lab);
+  const sinOptica = c.preciosSinIdentidad
+    ? "No tenés acceso a sus órdenes; sí podés cotizar con la lista. Si dice ser una óptica, pedile el nombre de la óptica y ofrecé pasar la consulta al equipo para registrar su número (así podrá consultar órdenes)."
+    : "No tenés acceso a precios ni órdenes en esta conversación.";
   const quien = c.optica
     ? `${c.contacto ?? "Un contacto"} de la óptica "${c.optica.nombre}" (óptica cliente identificada).`
-    : `${c.participante ? `"${c.participante}"` : "Una persona"}, no identificada como óptica cliente. No tenés acceso a precios ni órdenes en esta conversación.`;
+    : `${c.participante ? `"${c.participante}"` : "Una persona"}, no identificada como óptica cliente. ${sinOptica}`;
   const herramientas = c.herramientasCompletas === false
-    ? "Solo escalar_a_humano."
+    ? (c.preciosSinIdentidad ? "buscar_precio y escalar_a_humano (estado_orden no: sin identidad no se sabe de quién son las órdenes)." : "Solo escalar_a_humano.")
     : "buscar_precio, estado_orden y escalar_a_humano.";
 
   return `${instrucciones}

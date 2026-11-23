@@ -73,3 +73,29 @@ describe("resumen de lo que respondió una herramienta (perfil → consultas)", 
     expect(resumirResultado("estado_orden", { encontrada: false })).toEqual([]);
   });
 });
+
+describe("modo 'precios': número no registrado puede cotizar, nunca ver órdenes", () => {
+  const ctxPrecios = (): ToolContext => ({ ...sinIdentidad(), preciosSinIdentidad: true });
+
+  it("se le ofrecen buscar_precio y escalar_a_humano, no estado_orden", () => {
+    expect(toolsPara(false, true).map((t) => t.name)).toEqual(["buscar_precio", "escalar_a_humano"]);
+  });
+
+  it("buscar_precio responde con la lista", async () => {
+    const r = await ejecutarTool("buscar_precio", { consulta: "progresivo 1.67 antirreflejo" }, ctxPrecios());
+    expect(r.ok).toBe(true);
+    expect((r.data as any).resultados.length).toBeGreaterThan(0);
+  });
+
+  it("estado_orden sigue sin devolver nada aunque se llame directo", async () => {
+    const r = await ejecutarTool("estado_orden", { numero_orden: "48213" }, ctxPrecios());
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r.data)).not.toContain("tallado");
+  });
+
+  it("el prompt explica que puede cotizar pero no ver órdenes", () => {
+    const p = systemPrompt({ lab: "Topex", optica: null, contacto: null, ahora: new Date(), herramientasCompletas: false, preciosSinIdentidad: true, plataforma: "whatsapp" });
+    expect(p).toContain("buscar_precio y escalar_a_humano (estado_orden no");
+    expect(p).toContain("registrar su número");
+  });
+});
